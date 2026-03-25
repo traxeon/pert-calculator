@@ -92,26 +92,28 @@ body { min-height: 100vh; }
 
 /* Roles table */
 .roles-wrap { background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-.roles-header { display: grid; grid-template-columns: 2fr 70px 100px 200px 100px 140px 100px 36px; gap: 0 16px; padding: 10px 20px; border-bottom: 1px solid var(--border); }
+.roles-header { display: grid; grid-template-columns: 3fr 70px 110px 200px 100px 90px 160px 36px; gap: 0 16px; padding: 10px 20px; border-bottom: 1px solid var(--border); }
 .col-head { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; }
-.role-row { display: grid; grid-template-columns: 2fr 70px 100px 200px 100px 140px 100px 36px; align-items: center; padding: 13px 20px; border-bottom: 1px solid var(--border); transition: background 0.1s; gap: 0 16px; }
+.role-row { display: grid; grid-template-columns: 3fr 70px 110px 200px 100px 90px 160px 36px; align-items: end; padding: 12px 20px; border-bottom: 1px solid var(--border); transition: background 0.1s; gap: 0 16px; }
 .role-row:last-child { border-bottom: none; }
 .role-row:hover { background: #f7f8fc; }
 .role-input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); font-family: var(--sans); width: 100%; }
 .role-input::placeholder { color: var(--text3); }
 .count-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; outline: none; font-family: var(--mono); font-size: 13px; color: var(--text); width: 52px; padding: 4px 8px; text-align: center; transition: border-color 0.15s; }
 .count-input:focus { border-color: var(--accent); }
-.rate-override { background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; outline: none; font-family: var(--mono); font-size: 12px; color: var(--accent); width: 86px; padding: 4px 8px; text-align: center; transition: border-color 0.15s; }
-.rate-override::placeholder { color: var(--text3); font-size: 11px; }
-.rate-override:focus { border-color: var(--accent); }
-.rate-override.is-set { border-color: var(--accent); background: rgba(67,97,238,0.06); }
+.rate-cell-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 90px; min-width: 90px; overflow: hidden; }
+.role-rate-meta { font-size: 9px; color: var(--text3); font-family: var(--mono); line-height: 1; }
+.role-rate-meta.locked { color: var(--accent2); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
+.role-rate { background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; outline: none; font-family: var(--mono); font-size: 12px; color: var(--text); width: 90px; min-width: 90px; max-width: 90px; padding: 4px 6px; text-align: center; transition: border-color 0.15s; box-sizing: border-box; }
+.role-rate:focus { border-color: var(--accent); }
+.role-rate.is-locked { border-color: var(--accent2); background: rgba(58,158,111,0.07); color: var(--accent2); font-weight: 500; }
 .count-input::-webkit-inner-spin-button { display: none; }
 .util-wrap { display: flex; align-items: center; gap: 8px; }
 .util-slider { flex: 1; accent-color: var(--accent); height: 2px; }
 .util-label { font-family: var(--mono); font-size: 11px; color: var(--accent); width: 48px; text-align: right; background: none; border: none; border-bottom: 1px solid transparent; outline: none; padding: 2px 4px; cursor: text; }
 .util-label:hover { border-bottom-color: var(--border2); }
 .util-label:focus { border-bottom-color: var(--accent); }
-.role-cost { font-family: var(--mono); font-size: 12px; color: var(--text2); padding-left: 12px; }
+.role-cost { font-family: var(--mono); font-size: 12px; color: var(--text2); }
 .role-hrs { font-family: var(--mono); font-size: 11px; color: var(--text3); }
 .del-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; line-height: 1; padding: 2px; border-radius: 4px; transition: color 0.15s; }
 .del-btn:hover { color: var(--danger); }
@@ -292,7 +294,7 @@ textarea.form-input { resize: vertical; min-height: 70px; }
         <div class="pert-cell"><div class="pert-label">PERT rate</div><div class="pert-value" id="pertRate">—</div></div>
         <div class="pert-cell"><div class="pert-label">Std deviation</div><div class="pert-value" id="pertStd">—</div></div>
         <div class="pert-cell"><div class="pert-label">Range (±1σ)</div><div class="pert-value" id="pertRange">—</div></div>
-        <div class="pert-cell"><div class="pert-label">Hrs / person / mo</div><div class="pert-value">160</div></div>
+        <div class="pert-cell"><div class="pert-label">Blended rate</div><div class="pert-value" id="blendedRate">—</div></div>
       </div>
     </div>
 
@@ -421,9 +423,9 @@ const STORAGE_KEY = 'pert_saves_v1';
 const AUTO_KEY = 'pert_auto_v1';
 
 let roles = [
-  { name: 'Lead architect', count: 1, util: 100, rateOverride: null, startMonth: 1, endMonth: 12 },
-  { name: 'Developer', count: 2, util: 75, rateOverride: null, startMonth: 1, endMonth: 12 },
-  { name: 'Analyst', count: 1, util: 50, rateOverride: null, startMonth: 1, endMonth: 12 },
+  { name: 'Lead architect', count: 1, util: 100, lockedRate: null, startMonth: 1, endMonth: 12 },
+  { name: 'Developer', count: 2, util: 75, lockedRate: null, startMonth: 1, endMonth: 12 },
+  { name: 'Analyst', count: 1, util: 50, lockedRate: null, startMonth: 1, endMonth: 12 },
 ];
 
 function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
@@ -445,9 +447,14 @@ function renderRoles() {
     div.innerHTML = `
       <input class="role-input" type="text" value="${r.name}" placeholder="Role name" oninput="roles[${i}].name=this.value;calcHorizon()">
       <input class="count-input" type="number" value="${r.count}" min="1" max="99" oninput="roles[${i}].count=parseInt(this.value)||1;calc()">
-      <input class="rate-override ${r.rateOverride ? 'is-set' : ''}" type="number" value="${r.rateOverride || ''}" placeholder="PERT" min="1"
-        oninput="roles[${i}].rateOverride=this.value?parseFloat(this.value):null;this.classList.toggle('is-set',!!this.value);calc()"
-        title="Leave blank to use PERT blended rate">
+      <div class="rate-cell-wrap">
+        <span class="role-rate-meta ${r.lockedRate ? 'locked' : ''}" id="rm_${i}" onclick="unlockRate(${i})">—</span>
+        <input class="role-rate ${r.lockedRate ? 'is-locked' : ''}" type="number"
+          value="${r.lockedRate != null ? r.lockedRate : ''}"
+          placeholder="${Math.round(getPertRate().rate)}"
+          min="1"
+          oninput="roles[${i}].lockedRate=this.value?parseFloat(this.value):null;this.classList.toggle('is-locked',!!this.value);calc()">
+      </div>
       <div class="util-wrap">
         <input type="range" class="util-slider" min="10" max="100" step="5" value="${r.util}"
           oninput="roles[${i}].util=parseInt(this.value);this.nextElementSibling.value=this.value+'%';calc()">
@@ -479,13 +486,16 @@ function calc() {
   document.getElementById('pertRange').textContent = '$' + Math.round(rate-std) + ' – $' + Math.round(rate+std);
 
   let totalHC=0, totalHrs=0, totalMo=0, totalMoO=0, totalMoP=0;
+  let blendedNumer=0, blendedDenom=0;
+
   roles.forEach((r, i) => {
     const months = Math.max(0, (r.endMonth||12) - (r.startMonth||1) + 1);
     const hrs = 160 * (r.util/100) * r.count;
     const totalEngagementHrs = hrs * months;
-    const rRate = r.rateOverride || rate;
-    const rO = r.rateOverride || o;
-    const rP = r.rateOverride || p;
+    // per-role rate: locked > global PERT
+    const rRate = (r.lockedRate != null) ? r.lockedRate : rate;
+    const rO    = (r.lockedRate != null) ? r.lockedRate : o;
+    const rP    = (r.lockedRate != null) ? r.lockedRate : p;
     const cost = hrs * rRate;
     const totalCost = totalEngagementHrs * rRate;
     totalHC += r.count;
@@ -493,16 +503,34 @@ function calc() {
     totalMo += cost;
     totalMoO += hrs * rO;
     totalMoP += hrs * rP;
+    // weighted blended rate accumulation
+    blendedNumer += hrs * rRate;
+    blendedDenom += hrs;
     const rc = document.getElementById('rc_'+i);
     const rh = document.getElementById('rh_'+i);
-    if (rc) rc.textContent = fmt(cost) + (r.rateOverride ? ' ★' : '');
-    if (rh) rh.textContent = fmtHrs(hrs) + ' hrs · ' + months + ' mo · ' + fmt(totalCost) + ' total';
+    const rm = document.getElementById('rm_'+i);
+    if (rc) rc.textContent = fmt(cost);
+    if (rh) rh.textContent = fmtHrs(hrs) + ' hrs · ' + months + ' mo · ' + fmt(totalCost);
+    if (rm) {
+      if (r.lockedRate != null) {
+        rm.textContent = '★ locked rate';
+        rm.className = 'role-rate-meta locked';
+      } else {
+        rm.textContent = 'using PERT $' + rate.toFixed(0);
+        rm.className = 'role-rate-meta';
+      }
+    }
   });
 
+  const blendedRate = blendedDenom > 0 ? blendedNumer / blendedDenom : rate;
   document.getElementById('sumHC').textContent = totalHC;
   document.getElementById('sumHrs').textContent = fmtHrs(totalHrs) + ' hrs';
   document.getElementById('sumMo').textContent = fmt(totalMo);
   document.getElementById('sumRange').textContent = fmt(totalMoO) + ' – ' + fmt(totalMoP);
+
+  // update blended rate in PERT bar
+  const blendedEl = document.getElementById('blendedRate');
+  if (blendedEl) blendedEl.textContent = '$' + blendedRate.toFixed(2) + '/hr';
 
   calcHorizon(rate, o, p);
   autoSave();
@@ -518,11 +546,11 @@ function calcHorizon(rate, o, p) {
     const start = r.startMonth||1, end = r.endMonth||12;
     const months = Math.max(0, end - start + 1);
     const hrs = 160 * (r.util/100) * r.count;
-    const rRate = r.rateOverride || rate;
-    const rO = r.rateOverride || o;
-    const rP = r.rateOverride || p;
+    const rRate = (r.lockedRate != null) ? r.lockedRate : rate;
+    const rO    = (r.lockedRate != null) ? r.lockedRate : o;
+    const rP    = (r.lockedRate != null) ? r.lockedRate : p;
     const moO = hrs * rO, moR = hrs * rRate, moP = hrs * rP;
-    const overrideTag = r.rateOverride ? ' <span style="font-size:9px;color:var(--accent)">★ $'+r.rateOverride+'/hr</span>' : '';
+    const overrideTag = (r.lockedRate != null) ? ' <span style="font-size:9px;color:var(--accent2)">★ $'+r.lockedRate+'/hr</span>' : '';
     const durTag = (start!==1||end!==12) ? `<span style="font-size:9px;color:var(--text3)"> mo ${start}–${end}</span>` : '';
     const tr = document.createElement('tr');
     let cells = `<td>${r.name}${overrideTag}${durTag}<div class="role-meta">×${r.count} @ ${r.util}% · ${months} mo</div></td>`;
@@ -548,7 +576,7 @@ function calcHorizon(rate, o, p) {
   body.appendChild(tr);
 }
 
-function addRole() { roles.push({name:'New role',count:1,util:100,rateOverride:null,startMonth:1,endMonth:12}); renderRoles(); }
+function addRole() { roles.push({name:'New role',count:1,util:100,lockedRate:null,startMonth:1,endMonth:12}); renderRoles(); }
 function removeRole(i) { if(roles.length===1) return; roles.splice(i,1); renderRoles(); }
 
 // Persistence
@@ -713,9 +741,9 @@ function getQuoteData() {
   const roleRows = roles.map(r => {
     const months = Math.max(0, (r.endMonth||12) - (r.startMonth||1) + 1);
     const hrs = 160*(r.util/100)*r.count;
-    const rRate = r.rateOverride || rate;
-    const rO = r.rateOverride || o;
-    const rP = r.rateOverride || p;
+    const rRate = (r.lockedRate != null) ? r.lockedRate : rate;
+    const rO    = (r.lockedRate != null) ? r.lockedRate : o;
+    const rP    = (r.lockedRate != null) ? r.lockedRate : p;
     totalHC += r.count;
     totalHrs += hrs;
     return { name: r.name, count: r.count, util: r.util, hrs, months,
@@ -873,13 +901,21 @@ function resetAll() {
   document.getElementById('rMl').value = 150;
   document.getElementById('rPes').value = 200;
   roles = [
-    { name: 'Lead architect', count: 1, util: 100, rateOverride: null, startMonth: 1, endMonth: 12 },
-    { name: 'Developer', count: 2, util: 75, rateOverride: null, startMonth: 1, endMonth: 12 },
-    { name: 'Analyst', count: 1, util: 50, rateOverride: null, startMonth: 1, endMonth: 12 },
+    { name: 'Lead architect', count: 1, util: 100, lockedRate: null, startMonth: 1, endMonth: 12 },
+    { name: 'Developer', count: 2, util: 75, lockedRate: null, startMonth: 1, endMonth: 12 },
+    { name: 'Analyst', count: 1, util: 50, lockedRate: null, startMonth: 1, endMonth: 12 },
   ];
   renderRoles();
   closeResetModal();
   showToast('Reset to defaults', 'success');
+}
+
+function unlockRate(i) {
+  if (roles[i].lockedRate == null) return;
+  roles[i].lockedRate = null;
+  const input = document.querySelector(`#rolesBody .role-row:nth-child(${i+1}) .role-rate`);
+  if (input) { input.value = ''; input.classList.remove('is-locked'); }
+  calc();
 }
 
 function showToast(msg, type) {
