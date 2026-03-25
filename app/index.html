@@ -482,10 +482,12 @@ function calc() {
   roles.forEach((r, i) => {
     const months = Math.max(0, (r.endMonth||12) - (r.startMonth||1) + 1);
     const hrs = 160 * (r.util/100) * r.count;
+    const totalEngagementHrs = hrs * months;
     const rRate = r.rateOverride || rate;
     const rO = r.rateOverride || o;
     const rP = r.rateOverride || p;
     const cost = hrs * rRate;
+    const totalCost = totalEngagementHrs * rRate;
     totalHC += r.count;
     totalHrs += hrs;
     totalMo += cost;
@@ -494,7 +496,7 @@ function calc() {
     const rc = document.getElementById('rc_'+i);
     const rh = document.getElementById('rh_'+i);
     if (rc) rc.textContent = fmt(cost) + (r.rateOverride ? ' ★' : '');
-    if (rh) rh.textContent = fmtHrs(hrs) + ' hrs · ' + months + 'mo';
+    if (rh) rh.textContent = fmtHrs(hrs) + ' hrs · ' + months + ' mo · ' + fmt(totalCost) + ' total';
   });
 
   document.getElementById('sumHC').textContent = totalHC;
@@ -538,7 +540,7 @@ function calcHorizon(rate, o, p) {
   const tr = document.createElement('tr');
   let totalCells = `<td>Total</td>`;
   const bands = ['band-mo','band-q','band-sa','band-an'];
-  mults.forEach((m, i) => {
+  [0,1,2,3].forEach(i => {
     const b = bands[i];
     totalCells += `<td class="opt-col ${b}">${fmt(totalsO[i])}</td><td class="pert-col ${b}">${fmt(totalsR[i])}</td><td class="pes-col ${b}">${fmt(totalsP[i])}</td>`;
   });
@@ -709,11 +711,20 @@ function getQuoteData() {
   const labels = ['Monthly','Quarterly','Semi-Annual','Annual'];
   let totalHC=0, totalHrs=0;
   const roleRows = roles.map(r => {
+    const months = Math.max(0, (r.endMonth||12) - (r.startMonth||1) + 1);
     const hrs = 160*(r.util/100)*r.count;
+    const rRate = r.rateOverride || rate;
+    const rO = r.rateOverride || o;
+    const rP = r.rateOverride || p;
     totalHC += r.count;
     totalHrs += hrs;
-    return { name: r.name, count: r.count, util: r.util, hrs,
-      costs: mults.map(m => ({ opt: hrs*o*m, pert: hrs*rate*m, pes: hrs*p*m })) };
+    return { name: r.name, count: r.count, util: r.util, hrs, months,
+      startMonth: r.startMonth||1, endMonth: r.endMonth||12,
+      rateOverride: r.rateOverride,
+      costs: mults.map(m => {
+        const cm = Math.min(m, months);
+        return { opt: hrs*rO*cm, pert: hrs*rRate*cm, pes: hrs*rP*cm };
+      }) };
   });
   const totals = mults.map((m,i) => ({
     opt: roleRows.reduce((s,r)=>s+r.costs[i].opt,0),
@@ -733,11 +744,11 @@ function exportQuoteCSV() {
   rows.push(['Rate inputs','Optimistic','Most Likely','Pessimistic','PERT Rate']);
   rows.push(['$/hr', d.o, getPertRate().m, d.p, getPertRate().rate.toFixed(2)]);
   rows.push([]);
-  const hdr = ['Role','Count','Util %','Alloc Hrs/Mo'];
+  const hdr = ['Role','Count','Util %','Start Mo','End Mo','Duration Mo','Alloc Hrs/Mo'];
   d.labels.forEach(l => hdr.push(l+' (Opt)', l+' (PERT)', l+' (Pes)'));
   rows.push(hdr);
   d.roleRows.forEach(r => {
-    const row = [r.name, r.count, r.util+'%', Math.round(r.hrs)];
+    const row = [r.name, r.count, r.util+'%', r.startMonth, r.endMonth, r.months, Math.round(r.hrs)];
     r.costs.forEach(c => row.push(Math.round(c.opt), Math.round(c.pert), Math.round(c.pes)));
     rows.push(row);
   });
