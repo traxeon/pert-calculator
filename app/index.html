@@ -120,12 +120,12 @@ body { min-height: 100vh; }
 .metric-sub { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 3px; }
 
 /* Horizon table */
-.horizon-wrap { background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.horizon-wrap { background: var(--surface); border-radius: 8px; overflow-x: auto; border: 1px solid var(--border); }
 .horizon-table { width: 100%; border-collapse: collapse; }
-.horizon-table th { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; padding: 10px 16px; border-bottom: 1px solid var(--border); text-align: right; font-weight: 400; }
+.horizon-table th { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: right; font-weight: 400; white-space: nowrap; }
 .horizon-table th:first-child { text-align: left; }
-.horizon-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; color: var(--text2); text-align: right; }
-.horizon-table td:first-child { text-align: left; color: var(--text); font-size: 13px; }
+.horizon-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--text2); text-align: right; white-space: nowrap; }
+.horizon-table td:first-child { text-align: left; color: var(--text); font-size: 12px; min-width: 140px; }
 .horizon-table td .role-meta { font-size: 10px; color: var(--text3); margin-top: 1px; }
 .horizon-table tr:last-child td { border-bottom: none; background: var(--surface2); color: var(--accent); font-weight: 500; }
 .horizon-table tr:last-child td:first-child { color: var(--text); }
