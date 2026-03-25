@@ -267,16 +267,16 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px;
           <thead>
             <tr>
               <th rowspan="2" style="vertical-align:bottom">Role</th>
-              <th colspan="3" style="text-align:center;border-bottom:0.5px solid var(--border)">Monthly</th>
-              <th colspan="3" style="text-align:center;border-bottom:0.5px solid var(--border)">Quarterly</th>
-              <th colspan="3" style="text-align:center;border-bottom:0.5px solid var(--border)">Semi-annual</th>
-              <th colspan="3" style="text-align:center;border-bottom:0.5px solid var(--border)">Annual</th>
+              <th colspan="3" class="band-mo-h" style="text-align:center;border-bottom:0.5px solid var(--border)">Monthly</th>
+              <th colspan="3" class="band-q-h"  style="text-align:center;border-bottom:0.5px solid var(--border)">Quarterly</th>
+              <th colspan="3" class="band-sa-h" style="text-align:center;border-bottom:0.5px solid var(--border)">Semi-annual</th>
+              <th colspan="3" class="band-an-h" style="text-align:center;border-bottom:0.5px solid var(--border)">Annual</th>
             </tr>
             <tr>
-              <th class="sub-col opt-col">Opt</th><th class="sub-col pert-col">PERT</th><th class="sub-col pes-col">Pes</th>
-              <th class="sub-col opt-col">Opt</th><th class="sub-col pert-col">PERT</th><th class="sub-col pes-col">Pes</th>
-              <th class="sub-col opt-col">Opt</th><th class="sub-col pert-col">PERT</th><th class="sub-col pes-col">Pes</th>
-              <th class="sub-col opt-col">Opt</th><th class="sub-col pert-col">PERT</th><th class="sub-col pes-col">Pes</th>
+              <th class="sub-col opt-col band-mo-h">Opt</th><th class="sub-col pert-col band-mo-h">PERT</th><th class="sub-col pes-col band-mo-h">Pes</th>
+              <th class="sub-col opt-col band-q-h">Opt</th><th class="sub-col pert-col band-q-h">PERT</th><th class="sub-col pes-col band-q-h">Pes</th>
+              <th class="sub-col opt-col band-sa-h">Opt</th><th class="sub-col pert-col band-sa-h">PERT</th><th class="sub-col pes-col band-sa-h">Pes</th>
+              <th class="sub-col opt-col band-an-h">Opt</th><th class="sub-col pert-col band-an-h">PERT</th><th class="sub-col pes-col band-an-h">Pes</th>
             </tr>
           </thead>
           <tbody id="horizonBody"></tbody>
@@ -387,17 +387,21 @@ function calcHorizon(rate, o, p) {
     const moO = hrs * o, moR = hrs * rate, moP = hrs * p;
     const tr = document.createElement('tr');
     let cells = `<td>${r.name}<div class="role-meta">×${r.count} @ ${r.util}%</div></td>`;
+    const bands = ['band-mo','band-q','band-sa','band-an'];
     mults.forEach((m, i) => {
       totalsO[i] += moO*m; totalsR[i] += moR*m; totalsP[i] += moP*m;
-      cells += `<td class="opt-col">${fmt(moO*m)}</td><td class="pert-col">${fmt(moR*m)}</td><td class="pes-col">${fmt(moP*m)}</td>`;
+      const b = bands[i];
+      cells += `<td class="opt-col ${b}">${fmt(moO*m)}</td><td class="pert-col ${b}">${fmt(moR*m)}</td><td class="pes-col ${b}">${fmt(moP*m)}</td>`;
     });
     tr.innerHTML = cells;
     body.appendChild(tr);
   });
   const tr = document.createElement('tr');
   let totalCells = `<td>Total</td>`;
+  const bands = ['band-mo','band-q','band-sa','band-an'];
   mults.forEach((m, i) => {
-    totalCells += `<td class="opt-col">${fmt(totalsO[i])}</td><td class="pert-col">${fmt(totalsR[i])}</td><td class="pes-col">${fmt(totalsP[i])}</td>`;
+    const b = bands[i];
+    totalCells += `<td class="opt-col ${b}">${fmt(totalsO[i])}</td><td class="pert-col ${b}">${fmt(totalsR[i])}</td><td class="pes-col ${b}">${fmt(totalsP[i])}</td>`;
   });
   tr.innerHTML = totalCells;
   body.appendChild(tr);
