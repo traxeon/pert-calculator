@@ -454,7 +454,7 @@ function renderRoles() {
         <span class="role-rate-meta ${r.lockedRate ? 'locked' : ''}" id="rm_${i}" onclick="unlockRate(${i})">—</span>
         <input class="role-rate ${r.lockedRate ? 'is-locked' : ''}" type="number"
           value="${r.lockedRate != null ? r.lockedRate : ''}"
-          placeholder="${Math.round(getPertRate().rate)}"
+          id="rp_${i}" placeholder="${Math.round(getPertRate().rate)}"
           min="1"
           oninput="roles[${i}].lockedRate=this.value?parseFloat(this.value):null;this.classList.toggle('is-locked',!!this.value);calc()">
       </div>
@@ -514,6 +514,7 @@ function calc() {
     const rm = document.getElementById('rm_'+i);
     if (rc) rc.textContent = fmt(cost);
     if (rh) rh.textContent = fmtHrs(hrs) + ' hrs · ' + months + ' mo · ' + fmt(totalCost);
+    const rp = document.getElementById('rp_'+i);
     if (rm) {
       if (r.lockedRate != null) {
         rm.textContent = '★ locked rate';
@@ -521,6 +522,7 @@ function calc() {
       } else {
         rm.textContent = 'using PERT $' + rate.toFixed(0);
         rm.className = 'role-rate-meta';
+        if (rp) rp.placeholder = Math.round(rate);
       }
     }
   });
