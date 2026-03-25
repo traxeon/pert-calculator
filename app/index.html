@@ -164,6 +164,15 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px;
 .horizon-table tr:last-child td.band-q  { background-color: rgba(143,168,110,0.22) !important; }
 .horizon-table tr:last-child td.band-sa { background-color: rgba(55,138,221,0.22) !important; }
 .horizon-table tr:last-child td.band-an { background-color: rgba(192,96,96,0.22) !important; }
+
+/* Quote modal */
+.modal-lg { width: 480px; }
+.form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.form-label { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; }
+.form-input { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; padding: 7px 10px; font-size: 13px; color: var(--text); font-family: var(--sans); outline: none; }
+.form-input:focus { border-color: var(--accent); }
+textarea.form-input { resize: vertical; min-height: 70px; }
+.export-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -190,6 +199,14 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px;
       <button class="footer-btn" onclick="exportJSON()">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 7l3 3 3-3M3 12h10"/></svg>
         Export JSON
+      </button>
+      <button class="footer-btn" onclick="openQuoteModal()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M6 6h4M6 9h4M6 12h2"/></svg>
+        Export quote
+      </button>
+      <button class="footer-btn" onclick="confirmReset()" style="color:var(--danger)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M6 4V2h4v2M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4"/><path d="M7 7v4M9 7v4"/></svg>
+        Reset
       </button>
       <label class="footer-btn" style="cursor:pointer">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 14V6M5 9l3-3 3 3M3 4h10"/></svg>
@@ -304,6 +321,37 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px;
     <div class="modal-btns">
       <button class="btn" onclick="closeSaveModal()">Cancel</button>
       <button class="btn primary" onclick="saveEstimate()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="quoteModal">
+  <div class="modal modal-lg">
+    <div class="modal-title">Export quote</div>
+    <div class="form-row">
+      <label class="form-label">Date</label>
+      <input class="form-input" id="quoteDate" type="date" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">Notes / scope</label>
+      <textarea class="form-input" id="quoteNotes" placeholder="Describe the scope of work, assumptions, or any conditions that apply to this estimate..."></textarea>
+    </div>
+    <div class="modal-warn" style="margin-bottom:1rem">PDF export uses your browser print dialog — select "Save as PDF" as the destination.</div>
+    <div class="export-btns">
+      <button class="btn" onclick="closeQuoteModal()">Cancel</button>
+      <button class="btn" onclick="exportQuoteCSV()">Download CSV</button>
+      <button class="btn primary" onclick="exportQuotePDF()">Export PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <div class="modal-title">Reset estimate</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:1rem;line-height:1.6">This will clear the estimate name, all roles, and rate inputs. Your saved estimates in the sidebar will not be affected.</p>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeResetModal()">Cancel</button>
+      <button class="btn" onclick="resetAll()" style="border-color:var(--danger);color:var(--danger)">Clear everything</button>
     </div>
   </div>
 </div>
@@ -525,6 +573,148 @@ function importJSON(e) {
   e.target.value = '';
 }
 
+function openQuoteModal() {
+  document.getElementById('quoteDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('quoteModal').classList.add('open');
+}
+function closeQuoteModal() { document.getElementById('quoteModal').classList.remove('open'); }
+
+function getQuoteData() {
+  const { rate, o, p } = getPertRate();
+  const date = document.getElementById('quoteDate').value;
+  const notes = document.getElementById('quoteNotes').value;
+  const name = document.getElementById('estimateName').value || 'Estimate';
+  const mults = [1,3,6,12];
+  const labels = ['Monthly','Quarterly','Semi-Annual','Annual'];
+  let totalHC=0, totalHrs=0;
+  const roleRows = roles.map(r => {
+    const hrs = 160*(r.util/100)*r.count;
+    totalHC += r.count;
+    totalHrs += hrs;
+    return { name: r.name, count: r.count, util: r.util, hrs,
+      costs: mults.map(m => ({ opt: hrs*o*m, pert: hrs*rate*m, pes: hrs*p*m })) };
+  });
+  const totals = mults.map((m,i) => ({
+    opt: roleRows.reduce((s,r)=>s+r.costs[i].opt,0),
+    pert: roleRows.reduce((s,r)=>s+r.costs[i].pert,0),
+    pes: roleRows.reduce((s,r)=>s+r.costs[i].pes,0)
+  }));
+  return { name, date, notes, rate, o, p, totalHC, totalHrs, roleRows, totals, labels };
+}
+
+function exportQuoteCSV() {
+  const d = getQuoteData();
+  const rows = [];
+  rows.push([d.name]);
+  rows.push(['Date', d.date]);
+  if (d.notes) rows.push(['Notes', d.notes]);
+  rows.push([]);
+  rows.push(['Rate inputs','Optimistic','Most Likely','Pessimistic','PERT Rate']);
+  rows.push(['$/hr', d.o, getPertRate().m, d.p, getPertRate().rate.toFixed(2)]);
+  rows.push([]);
+  const hdr = ['Role','Count','Util %','Alloc Hrs/Mo'];
+  d.labels.forEach(l => hdr.push(l+' (Opt)', l+' (PERT)', l+' (Pes)'));
+  rows.push(hdr);
+  d.roleRows.forEach(r => {
+    const row = [r.name, r.count, r.util+'%', Math.round(r.hrs)];
+    r.costs.forEach(c => row.push(Math.round(c.opt), Math.round(c.pert), Math.round(c.pes)));
+    rows.push(row);
+  });
+  const totalRow = ['TOTAL', d.totalHC, '', Math.round(d.totalHrs)];
+  d.totals.forEach(t => totalRow.push(Math.round(t.opt), Math.round(t.pert), Math.round(t.pes)));
+  rows.push(totalRow);
+  const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (d.name||'quote').replace(/\s+/g,'-').toLowerCase()+'-'+d.date+'.csv';
+  a.click();
+  showToast('CSV downloaded', 'success');
+}
+
+function exportQuotePDF() {
+  const d = getQuoteData();
+  const { m } = getPertRate();
+  const win = window.open('', '_blank');
+  const fmtN = n => '$'+Math.round(n).toLocaleString();
+  const bandColors = ['#2a2610','#1a2410','#101c2a','#2a1010'];
+  let roleRowsHTML = d.roleRows.map(r =>
+    `<tr>
+      <td>${r.name}</td>
+      <td style="text-align:center">${r.count}</td>
+      <td style="text-align:center">${r.util}%</td>
+      <td style="text-align:center">${Math.round(r.hrs)}</td>
+      ${r.costs.map((c,i) => `
+        <td style="text-align:right;background:${bandColors[i]}20">${fmtN(c.opt)}</td>
+        <td style="text-align:right;background:${bandColors[i]}30;font-weight:600">${fmtN(c.pert)}</td>
+        <td style="text-align:right;background:${bandColors[i]}20">${fmtN(c.pes)}</td>`).join('')}
+    </tr>`).join('');
+  let totalRowHTML = `<tr style="font-weight:700;border-top:2px solid #555">
+    <td>TOTAL</td><td style="text-align:center">${d.totalHC}</td><td></td><td style="text-align:center">${Math.round(d.totalHrs)}</td>
+    ${d.totals.map((t,i) => `
+      <td style="text-align:right;background:${bandColors[i]}30">${fmtN(t.opt)}</td>
+      <td style="text-align:right;background:${bandColors[i]}50;color:#c8b560">${fmtN(t.pert)}</td>
+      <td style="text-align:right;background:${bandColors[i]}30">${fmtN(t.pes)}</td>`).join('')}
+  </tr>`;
+  let subHdr = d.labels.map((l,i) =>
+    `<th colspan="3" style="text-align:center;background:${bandColors[i]}40;padding:6px">${l}</th>`).join('');
+  let subHdr2 = d.labels.map((l,i) =>
+    `<th style="background:${bandColors[i]}25;font-size:9px">Opt</th><th style="background:${bandColors[i]}35;font-size:9px">PERT</th><th style="background:${bandColors[i]}25;font-size:9px">Pes</th>`).join('');
+  win.document.write(`<!DOCTYPE html><html><head><title>${d.name}</title>
+  <style>
+    body { font-family: 'Helvetica Neue', sans-serif; color: #1a1a1a; margin: 0; padding: 40px; font-size: 12px; }
+    h1 { font-size: 22px; font-weight: 300; margin: 0 0 4px; letter-spacing: -0.02em; }
+    .meta { color: #666; font-size: 11px; margin-bottom: 6px; }
+    .notes { background: #f5f5f0; border-left: 3px solid #c8b560; padding: 10px 14px; margin: 16px 0; font-size: 12px; line-height: 1.6; color: #333; border-radius: 0 4px 4px 0; }
+    .rates { display: flex; gap: 16px; margin: 16px 0; }
+    .rate-box { background: #f5f5f0; border-radius: 6px; padding: 10px 16px; flex: 1; }
+    .rate-box .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #888; margin-bottom: 3px; }
+    .rate-box .val { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 11px; }
+    th { background: #1a1a1a; color: #fff; padding: 7px 8px; text-align: left; font-weight: 500; }
+    td { padding: 7px 8px; border-bottom: 1px solid #e8e8e8; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .footer { margin-top: 24px; font-size: 10px; color: #999; border-top: 1px solid #e8e8e8; padding-top: 12px; }
+    @media print { body { padding: 20px; } }
+  </style></head><body>
+  <h1>${d.name}</h1>
+  <div class="meta">Date: ${d.date} &nbsp;·&nbsp; PERT Cost Estimate</div>
+  ${d.notes ? `<div class="notes"><strong>Scope / Notes:</strong><br>${d.notes.replace(/\n/g,'<br>')}</div>` : ''}
+  <div class="rates">
+    <div class="rate-box"><div class="lbl">Optimistic rate</div><div class="val">$${d.o}/hr</div></div>
+    <div class="rate-box"><div class="lbl">Most likely rate</div><div class="val">$${m}/hr</div></div>
+    <div class="rate-box"><div class="lbl">Pessimistic rate</div><div class="val">$${d.p}/hr</div></div>
+    <div class="rate-box"><div class="lbl">PERT rate</div><div class="val">$${d.rate.toFixed(2)}/hr</div></div>
+  </div>
+  <table>
+    <thead>
+      <tr><th rowspan="2">Role</th><th rowspan="2" style="text-align:center">Count</th><th rowspan="2" style="text-align:center">Util</th><th rowspan="2" style="text-align:center">Hrs/Mo</th>${subHdr}</tr>
+      <tr>${subHdr2}</tr>
+    </thead>
+    <tbody>${roleRowsHTML}${totalRowHTML}</tbody>
+  </table>
+  <div class="footer">Generated by PERT Staffing Estimator &nbsp;·&nbsp; Estimates are based on PERT methodology: (Optimistic + 4×Most Likely + Pessimistic) ÷ 6 &nbsp;·&nbsp; All figures in USD</div>
+  </body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
+  closeQuoteModal();
+  showToast('PDF ready — save from print dialog', 'success');
+}
+
+function confirmReset() { document.getElementById('resetModal').classList.add('open'); }
+function closeResetModal() { document.getElementById('resetModal').classList.remove('open'); }
+function resetAll() {
+  document.getElementById('estimateName').value = '';
+  document.getElementById('rOpt').value = '';
+  document.getElementById('rMl').value = '';
+  document.getElementById('rPes').value = '';
+  roles = [{ name: '', count: 1, util: 100 }];
+  renderRoles();
+  closeResetModal();
+  showToast('Cleared', 'success');
+}
+
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -533,6 +723,8 @@ function showToast(msg, type) {
 }
 
 document.getElementById('saveModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeSaveModal(); });
+document.getElementById('quoteModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeQuoteModal(); });
+document.getElementById('resetModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeResetModal(); });
 document.getElementById('saveNameInput').addEventListener('keydown', e => { if(e.key==='Enter') saveEstimate(); if(e.key==='Escape') closeSaveModal(); });
 
 // Boot
