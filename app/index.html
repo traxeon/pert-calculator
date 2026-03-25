@@ -154,6 +154,16 @@ body { min-height: 100vh; }
 
 input[type=range] { -webkit-appearance: none; appearance: none; height: 2px; background: var(--border2); border-radius: 2px; outline: none; }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+
+/* Time horizon column banding */
+.band-mo, .band-mo-h { background-color: rgba(200,181,96,0.12) !important; }
+.band-q,  .band-q-h  { background-color: rgba(143,168,110,0.12) !important; }
+.band-sa, .band-sa-h { background-color: rgba(55,138,221,0.12) !important; }
+.band-an, .band-an-h { background-color: rgba(192,96,96,0.12) !important; }
+.horizon-table tr:last-child td.band-mo { background-color: rgba(200,181,96,0.22) !important; }
+.horizon-table tr:last-child td.band-q  { background-color: rgba(143,168,110,0.22) !important; }
+.horizon-table tr:last-child td.band-sa { background-color: rgba(55,138,221,0.22) !important; }
+.horizon-table tr:last-child td.band-an { background-color: rgba(192,96,96,0.22) !important; }
 </style>
 </head>
 <body>
