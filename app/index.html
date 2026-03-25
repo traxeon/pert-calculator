@@ -248,6 +248,10 @@ textarea.form-input { resize: vertical; min-height: 70px; }
         Import JSON
         <input type="file" accept=".json" style="display:none" onchange="importJSON(event)">
       </label>
+      <button class="footer-btn" onclick="downloadTemplate()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M5 6h6M5 9h4"/><path d="M10 11l2 2 2-2"/><path d="M12 13V9"/></svg>
+        Download template
+      </button>
       <button class="footer-btn" onclick="confirmReset()" style="color:var(--danger)">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M6 4V2h4v2M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4"/><path d="M7 7v4M9 7v4"/></svg>
         Reset
@@ -1076,6 +1080,274 @@ function exportQuoteXLSX() {
   XLSX.writeFile(wb, filename);
   showToast('Excel downloaded', 'success');
   closeQuoteModal();
+}
+
+function downloadTemplate() {
+  const wb = XLSX.utils.book_new();
+  const enc = XLSX.utils.encode_cell;
+  const currFmt = '"$"#,##0.00';
+  const currFmt0 = '"$"#,##0';
+  const pctFmt = '0%';
+  const numFmt = '#,##0';
+
+  const hdr = {font:{bold:true,sz:11,color:{rgb:'FFFFFFFF'}}, fill:{patternType:'solid',fgColor:{rgb:'FF1A1D23'}}, alignment:{horizontal:'center'}};
+  const subHdr = (rgb) => ({font:{bold:true,sz:9}, fill:{patternType:'solid',fgColor:{rgb}}, alignment:{horizontal:'center'}});
+  const inputCell = {fill:{patternType:'solid',fgColor:{rgb:'FFFFF8E8'}}, border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}}}};
+  const calcCell = (rgb) => ({fill:{patternType:'solid',fgColor:{rgb}}, alignment:{horizontal:'right'}});
+  const boldCell = {font:{bold:true}};
+  const totalCell = (rgb) => ({font:{bold:true}, fill:{patternType:'solid',fgColor:{rgb}}, alignment:{horizontal:'right'}});
+
+  // ── SHEET 1: PERT Rate Calculator ────────────────────────────────────────
+  const wsP = {};
+  const pertData = [
+    ['PERT Rate Calculator'],
+    [],
+    ['', 'Rate ($/hr)', 'Notes'],
+    ['Optimistic (O)', 125, 'Best case hourly rate'],
+    ['Most Likely (ML)', 150, 'Expected hourly rate'],
+    ['Pessimistic (P)', 200, 'Worst case hourly rate'],
+    [],
+    ['PERT Rate', {f:'(B4+4*B5+B6)/6'}, 'Formula: (O + 4×ML + P) ÷ 6'],
+    ['Std Deviation', {f:'(B6-B4)/6'}, 'Formula: (P - O) ÷ 6'],
+    ['Range Low (−1σ)', {f:'B11-B12'}, 'PERT Rate minus 1 std deviation'],
+    ['Range High (+1σ)', {f:'B11+B12'}, 'PERT Rate plus 1 std deviation'],
+    [],
+    ['Hours/person/month', 160, 'Standard 40hr week × 4 weeks'],
+  ];
+  XLSX.utils.sheet_add_aoa(wsP, pertData, {origin:'A1'});
+  wsP['!cols'] = [{wch:22},{wch:14},{wch:40}];
+  // Style title
+  if (!wsP['A1']) wsP['A1'] = {t:'s',v:'PERT Rate Calculator'};
+  wsP['A1'].s = {font:{bold:true,sz:14,color:{rgb:'FF4361EE'}}};
+  // Style input cells
+  ['B4','B5','B6','B16'].forEach(ref => { if(wsP[ref]){ wsP[ref].s = inputCell; wsP[ref].z = currFmt0; }});
+  // Style formula cells
+  ['B11','B12','B13','B14'].forEach(ref => { if(wsP[ref]){ wsP[ref].s = calcCell('FFEEF1FF'); wsP[ref].z = currFmt; }});
+  wsP['!ref'] = 'A1:C16';
+  XLSX.utils.book_append_sheet(wb, wsP, 'PERT Calculator');
+
+  // ── SHEET 2: Inputs ────────────────────────────────────────────────────────
+  // Row layout:
+  // 1: Title
+  // 2: blank
+  // 3: Global rates header
+  // 4: O / ML / P labels
+  // 5: O / ML / P values  -> B5=Opt, C5=ML, D5=Pes
+  // 6: PERT Rate (formula)
+  // 7: blank
+  // 8: Column headers row 1
+  // 9: Column headers row 2
+  // 10+: Role data rows (up to 20)
+  const wsI = {};
+  const iData = [
+    ['Contingent Labor Cost Modeler — Inputs'],
+    [],
+    ['Global Rate Inputs (used for roles without a locked rate)'],
+    ['Optimistic ($/hr)', 'Most Likely ($/hr)', 'Pessimistic ($/hr)', 'PERT Rate ($/hr)', 'Hrs/Person/Mo'],
+    [125, 150, 200, {f:'(A5+4*B5+C5)/6'}, 160],
+    [],
+    [],
+    ['Role Name', 'Count', 'Util %', 'Locked Rate ($/hr)', 'Start Month', 'End Month', 'Duration (Mo)', 'Eff Rate ($/hr)', 'Hrs/Mo'],
+  ];
+  XLSX.utils.sheet_add_aoa(wsI, iData, {origin:'A1'});
+
+  // Add 15 blank role rows with formulas
+  for (let i = 0; i < 15; i++) {
+    const row = 9 + i; // 1-indexed
+    const r = row; // same
+    // Duration = EndMonth - StartMonth + 1
+    wsI[enc({r:r-1,c:6})] = {t:'n', f:`IF(AND(E${row}<>"",F${row}<>""),MAX(0,F${row}-E${row}+1),"")`};
+    // Eff Rate = locked rate if set, else PERT
+    wsI[enc({r:r-1,c:7})] = {t:'n', f:`IF(D${row}<>"",D${row},$D$5)`};
+    // Hrs/Mo = 160 * util * count
+    wsI[enc({r:r-1,c:8})] = {t:'n', f:`IF(AND(A${row}<>"",B${row}<>"",C${row}<>""),160*C${row}*B${row},"")`};
+    // Light input shading on editable cells
+    ['A','B','C','D','E','F'].forEach(col => {
+      const ref = col+row;
+      if (!wsI[ref]) wsI[ref] = {t:'s',v:''};
+      wsI[ref].s = inputCell;
+    });
+    // Format cells
+    if (wsI[`C${row}`]) wsI[`C${row}`].z = pctFmt;
+    if (wsI[`D${row}`]) wsI[`D${row}`].z = currFmt0;
+    if (wsI[enc({r:r-1,c:7})]) wsI[enc({r:r-1,c:7})].z = currFmt0;
+    if (wsI[enc({r:r-1,c:8})]) wsI[enc({r:r-1,c:8})].z = numFmt;
+  }
+
+  wsI['!cols'] = [{wch:28},{wch:7},{wch:8},{wch:14},{wch:10},{wch:10},{wch:12},{wch:14},{wch:10}];
+  // Style title
+  wsI['A1'].s = {font:{bold:true,sz:14,color:{rgb:'FF4361EE'}}};
+  // Style global rate header
+  wsI['A3'].s = {font:{bold:true,sz:10,color:{rgb:'FF555555'}}};
+  // Style global rate input row
+  ['A5','B5','C5'].forEach(ref => { if(!wsI[ref]) wsI[ref]={t:'n',v:0}; wsI[ref].s=inputCell; wsI[ref].z=currFmt0; });
+  wsI['D5'].s = calcCell('FFEEF1FF'); wsI['D5'].z = currFmt;
+  wsI['E5'] = {t:'n',v:160};
+  // Style column headers
+  ['A8','B8','C8','D8','E8','F8','G8','H8','I8'].forEach((ref,ci) => {
+    if (!wsI[ref]) wsI[ref] = {t:'s',v:''};
+    wsI[ref].s = hdr;
+  });
+  wsI['!ref'] = `A1:I${9+15}`;
+  wsI['!merges'] = [{s:{r:0,c:0},e:{r:0,c:8}},{s:{r:2,c:0},e:{r:2,c:4}}];
+  XLSX.utils.book_append_sheet(wb, wsI, 'Inputs');
+
+  // ── SHEET 3: Per-Role Cost Breakdown ──────────────────────────────────────
+  // References Inputs sheet for role data, calculates per-role costs
+  const wsR = {};
+  const rData = [
+    ['Per-Role Cost Breakdown'],
+    [],
+    ['Role Name', 'Count', 'Util %', 'Eff Rate', 'Duration Mo', 'Hrs/Mo', 'Mo Cost (Opt)', 'Mo Cost (PERT)', 'Mo Cost (Pes)', 'Total Engagement (Opt)', 'Total Engagement (PERT)', 'Total Engagement (Pes)'],
+  ];
+  XLSX.utils.sheet_add_aoa(wsR, rData, {origin:'A1'});
+  for (let i = 0; i < 15; i++) {
+    const row = 4 + i;
+    const iRow = 9 + i; // corresponding Inputs row
+    // Pull from Inputs sheet
+    wsR[enc({r:row-1,c:0})] = {t:'s', f:`Inputs!A${iRow}`};
+    wsR[enc({r:row-1,c:1})] = {t:'n', f:`Inputs!B${iRow}`};
+    wsR[enc({r:row-1,c:2})] = {t:'n', f:`Inputs!C${iRow}`, z:pctFmt};
+    wsR[enc({r:row-1,c:3})] = {t:'n', f:`Inputs!H${iRow}`, z:currFmt0};
+    wsR[enc({r:row-1,c:4})] = {t:'n', f:`Inputs!G${iRow}`};
+    wsR[enc({r:row-1,c:5})] = {t:'n', f:`Inputs!I${iRow}`, z:numFmt};
+    // Opt rate = IF locked use it, else Inputs!A5 (optimistic)
+    const optRate = `IF(Inputs!D${iRow}<>"",Inputs!D${iRow},Inputs!A5)`;
+    const pesRate = `IF(Inputs!D${iRow}<>"",Inputs!D${iRow},Inputs!C5)`;
+    const pertRate = `Inputs!H${iRow}`;
+    wsR[enc({r:row-1,c:6})] = {t:'n', f:`IF(Inputs!A${iRow}<>"",Inputs!I${iRow}*(${optRate}),"")`, z:currFmt0};
+    wsR[enc({r:row-1,c:7})] = {t:'n', f:`IF(Inputs!A${iRow}<>"",Inputs!I${iRow}*(${pertRate}),"")`, z:currFmt0};
+    wsR[enc({r:row-1,c:8})] = {t:'n', f:`IF(Inputs!A${iRow}<>"",Inputs!I${iRow}*(${pesRate}),"")`, z:currFmt0};
+    wsR[enc({r:row-1,c:9})]  = {t:'n', f:`IF(AND(Inputs!A${iRow}<>"",Inputs!G${iRow}<>""),Inputs!I${iRow}*(${optRate})*Inputs!G${iRow},"")`, z:currFmt0};
+    wsR[enc({r:row-1,c:10})] = {t:'n', f:`IF(AND(Inputs!A${iRow}<>"",Inputs!G${iRow}<>""),Inputs!I${iRow}*(${pertRate})*Inputs!G${iRow},"")`, z:currFmt0};
+    wsR[enc({r:row-1,c:11})] = {t:'n', f:`IF(AND(Inputs!A${iRow}<>"",Inputs!G${iRow}<>""),Inputs!I${iRow}*(${pesRate})*Inputs!G${iRow},"")`, z:currFmt0};
+  }
+  // Totals row
+  const tRow = 4 + 15;
+  wsR[enc({r:tRow-1,c:0})] = {t:'s',v:'TOTAL', s:{font:{bold:true}}};
+  ['F','G','H','I','J','K','L'].forEach((col,ci) => {
+    const colIdx = ci + 5;
+    const fmt = ci === 0 ? numFmt : currFmt0;
+    wsR[enc({r:tRow-1,c:colIdx})] = {t:'n', f:`SUM(${col}4:${col}${tRow-1})`, z:fmt, s:totalCell('FFEEF1FF')};
+  });
+  wsR['!cols'] = [{wch:28},{wch:7},{wch:8},{wch:12},{wch:10},{wch:10},{wch:14},{wch:14},{wch:14},{wch:18},{wch:18},{wch:18}];
+  // Style headers
+  'ABCDEFGHIJKL'.split('').forEach(col => {
+    const ref = col+'3';
+    if(!wsR[ref]) wsR[ref]={t:'s',v:''};
+    wsR[ref].s = hdr;
+  });
+  wsR['A1'].s = {font:{bold:true,sz:14,color:{rgb:'FF4361EE'}}};
+  wsR['!ref'] = `A1:L${tRow}`;
+  XLSX.utils.book_append_sheet(wb, wsR, 'Role Breakdown');
+
+  // ── SHEET 4: Time Horizon Summary ─────────────────────────────────────────
+  const wsH = {};
+  const periods = [{label:'Monthly',mult:1},{label:'Quarterly',mult:3},{label:'Semi-Annual',mult:6},{label:'Annual',mult:12}];
+  const hBands = ['FFFFF5CC','FFD4F5E4','FFD8DEFF','FFFFD6D6'];
+  const hData = [['Time Horizon Summary'],[]];
+  // Build header rows
+  const hRow1 = ['Role'];
+  const hRow2 = [''];
+  periods.forEach(p => { hRow1.push(p.label,'',''); hRow2.push('Opt','PERT','Pes'); });
+  hData.push(hRow1);
+  hData.push(hRow2);
+  XLSX.utils.sheet_add_aoa(wsH, hData, {origin:'A1'});
+
+  for (let i = 0; i < 15; i++) {
+    const row = 5 + i;
+    const iRow = 9 + i;
+    const rRow = 4 + i;
+    wsH[enc({r:row-1,c:0})] = {t:'s', f:`Inputs!A${iRow}`};
+    periods.forEach((p,pi) => {
+      const baseCol = 1 + pi*3;
+      const optCol = String.fromCharCode(66+baseCol-1);
+      const pertCol = String.fromCharCode(67+baseCol-1);
+      const pesCol = String.fromCharCode(68+baseCol-1);
+      // Cap mult to role duration
+      const durRef = `Inputs!G${iRow}`;
+      const cappedMult = `MIN(${p.mult},IF(${durRef}<>"",${durRef},12))`;
+      const optRate = `IF(Inputs!D${iRow}<>"",Inputs!D${iRow},Inputs!A5)`;
+      const pesRate = `IF(Inputs!D${iRow}<>"",Inputs!D${iRow},Inputs!C5)`;
+      const pertRate = `Inputs!H${iRow}`;
+      const hrsRef = `Inputs!I${iRow}`;
+      wsH[enc({r:row-1,c:baseCol})]   = {t:'n', f:`IF(Inputs!A${iRow}<>"",${hrsRef}*(${optRate})*(${cappedMult}),"")`, z:currFmt0};
+      wsH[enc({r:row-1,c:baseCol+1})] = {t:'n', f:`IF(Inputs!A${iRow}<>"",${hrsRef}*(${pertRate})*(${cappedMult}),"")`, z:currFmt0};
+      wsH[enc({r:row-1,c:baseCol+2})] = {t:'n', f:`IF(Inputs!A${iRow}<>"",${hrsRef}*(${pesRate})*(${cappedMult}),"")`, z:currFmt0};
+    });
+  }
+  // Totals row
+  const hTRow = 5 + 15;
+  wsH[enc({r:hTRow-1,c:0})] = {t:'s',v:'TOTAL',s:{font:{bold:true}}};
+  const colLetters = 'BCDEFGHIJKLM'.split('');
+  for (let c = 1; c <= 12; c++) {
+    const col = colLetters[c-1];
+    wsH[enc({r:hTRow-1,c})] = {t:'n', f:`SUM(${col}5:${col}${hTRow-1})`, z:currFmt0, s:totalCell('FFEEF1FF')};
+  }
+  // Style
+  wsH['A1'].s = {font:{bold:true,sz:14,color:{rgb:'FF4361EE'}}};
+  // Period header merges
+  wsH['!merges'] = [{s:{r:0,c:0},e:{r:0,c:12}}];
+  periods.forEach((p,pi) => {
+    wsH['!merges'].push({s:{r:2,c:1+pi*3},e:{r:2,c:3+pi*3}});
+    // Color period header cells
+    for (let c = 1+pi*3; c <= 3+pi*3; c++) {
+      const ref3 = enc({r:2,c}); const ref4 = enc({r:3,c});
+      if(!wsH[ref3]) wsH[ref3]={t:'s',v:''};
+      if(!wsH[ref4]) wsH[ref4]={t:'s',v:''};
+      wsH[ref3].s = subHdr(hBands[pi]);
+      wsH[ref4].s = subHdr(hBands[pi]);
+    }
+  });
+  // Role col header
+  const aH3 = enc({r:2,c:0}); const aH4 = enc({r:3,c:0});
+  if(!wsH[aH3]) wsH[aH3]={t:'s',v:'Role'}; wsH[aH3].s=hdr;
+  if(!wsH[aH4]) wsH[aH4]={t:'s',v:''}; wsH[aH4].s=hdr;
+  wsH['!merges'].push({s:{r:2,c:0},e:{r:3,c:0}});
+  wsH['!cols'] = [{wch:28},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:13},{wch:13},{wch:13},{wch:13},{wch:13},{wch:13}];
+  wsH['!ref'] = `A1:M${hTRow}`;
+  XLSX.utils.book_append_sheet(wb, wsH, 'Time Horizon');
+
+  // ── SHEET 5: Notes & Assumptions ──────────────────────────────────────────
+  const wsN = {};
+  const notesData = [
+    ['Notes & Assumptions'],
+    [],
+    ['How to use this workbook'],
+    ['1. Go to the PERT Calculator sheet and set your Optimistic, Most Likely, and Pessimistic hourly rates.'],
+    ['2. Go to the Inputs sheet and enter your roles. For each role fill in:'],
+    ['   • Role Name — descriptive title for the resource'],
+    ['   • Count — number of people in this role'],
+    ['   • Util % — percentage of a standard 160-hr month billed (e.g. 0.5 = 50%)'],
+    ['   • Locked Rate — optional. Enter a specific $/hr rate card value to override the PERT blended rate for this role.'],
+    ['   • Start Month / End Month — the month numbers (1–12) when this role begins and ends within the estimate period.'],
+    [],
+    ['Key concepts'],
+    ['PERT Rate', 'Weighted average: (Optimistic + 4 × Most Likely + Pessimistic) ÷ 6'],
+    ['Std Deviation', '(Pessimistic − Optimistic) ÷ 6. Represents uncertainty in the rate estimate.'],
+    ['Utilization', 'Fraction of a 160-hour month billed. 100% = 160 hrs, 50% = 80 hrs.'],
+    ['Duration', 'Number of months the role is engaged. Costs in the horizon table are capped to this value.'],
+    ['Locked Rate', 'A known rate card value for a specific role. Overrides the PERT blended rate for that role only.'],
+    ['Run Rate vs Total', 'Monthly/Quarterly columns show cost for that period assuming the role is active. Costs are zero-capped to actual duration.'],
+    [],
+    ['Disclaimer'],
+    ['This workbook is for planning and estimation purposes only. It does not constitute a contract, commitment, or binding agreement.'],
+    ['All figures are in USD. Estimates are based on inputs provided and standard PERT methodology.'],
+  ];
+  XLSX.utils.sheet_add_aoa(wsN, notesData, {origin:'A1'});
+  wsN['A1'].s = {font:{bold:true,sz:14,color:{rgb:'FF4361EE'}}};
+  wsN['A3'].s = {font:{bold:true,sz:11}};
+  wsN['A13'].s = {font:{bold:true,sz:11}};
+  wsN['A21'].s = {font:{bold:true,sz:11}};
+  ['A14','A15','A16','A17','A18','A19'].forEach(ref => {
+    if(wsN[ref]) wsN[ref].s = {font:{bold:true}};
+  });
+  wsN['!cols'] = [{wch:22},{wch:80}];
+  wsN['!ref'] = 'A1:B24';
+  XLSX.utils.book_append_sheet(wb, wsN, 'Notes');
+
+  XLSX.writeFile(wb, 'contingent-labor-cost-modeler.xlsx');
+  showToast('Template downloaded', 'success');
 }
 
 function showToast(msg, type) {
