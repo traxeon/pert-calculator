@@ -179,7 +179,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px;
 .form-input { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--text); font-family: var(--sans); outline: none; transition: border-color 0.15s; }
 .form-input:focus { border-color: var(--accent); }
 textarea.form-input { resize: vertical; min-height: 70px; }
-.export-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.export-btns { display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.export-btns-right { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* Duration inputs */
 .duration-wrap { display: flex; align-items: center; gap: 4px; }
@@ -387,8 +388,11 @@ textarea.form-input { resize: vertical; min-height: 70px; }
     <div class="modal-warn" style="margin-bottom:1rem">PDF export uses your browser print dialog — select "Save as PDF" as the destination.</div>
     <div class="export-btns">
       <button class="btn" onclick="closeQuoteModal()">Cancel</button>
-      <button class="btn" onclick="exportQuoteCSV()">Download CSV</button>
-      <button class="btn primary" onclick="exportQuotePDF()">Export PDF</button>
+      <div class="export-btns-right">
+        <button class="btn" onclick="exportQuoteCSV()">CSV</button>
+        <button class="btn" onclick="exportQuoteXLSX()">Excel</button>
+        <button class="btn primary" onclick="exportQuotePDF()">Export PDF</button>
+      </div>
     </div>
   </div>
 </div>
@@ -748,7 +752,7 @@ function getQuoteData() {
     totalHrs += hrs;
     return { name: r.name, count: r.count, util: r.util, hrs, months,
       startMonth: r.startMonth||1, endMonth: r.endMonth||12,
-      rateOverride: r.rateOverride,
+      lockedRate: r.lockedRate,
       costs: mults.map(m => {
         const cm = Math.min(m, months);
         return { opt: hrs*rO*cm, pert: hrs*rRate*cm, pes: hrs*rP*cm };
@@ -918,6 +922,171 @@ function unlockRate(i) {
   calc();
 }
 
+function exportQuoteXLSX() {
+  const d = getQuoteData();
+  const { m: mlRate } = getPertRate();
+  const wb = XLSX.utils.book_new();
+  const rows = [];
+
+  // ── Header block ──────────────────────────────────────────────────────────
+  rows.push([d.name]);
+  rows.push(['Date:', d.date, '', 'PERT Cost Estimate']);
+  if (d.notes) rows.push(['Notes:', d.notes]);
+  rows.push([]);
+
+  // ── Rate inputs ───────────────────────────────────────────────────────────
+  rows.push(['Rate Inputs', '', '', '']);
+  rows.push(['Optimistic', 'Most Likely', 'Pessimistic', 'PERT Rate']);
+  rows.push([d.o, mlRate, d.p, parseFloat(d.rate.toFixed(2))]);
+  rows.push([]);
+
+  // ── Column headers ────────────────────────────────────────────────────────
+  const hdr1 = ['Role', 'Count', 'Util %', 'Rate $/hr', 'Start Mo', 'End Mo', 'Duration', 'Hrs/Mo',
+    'Monthly', '', '', 'Quarterly', '', '', 'Semi-Annual', '', '', 'Annual', '', ''];
+  const hdr2 = ['', '', '', '', '', '', '', '',
+    'Opt', 'PERT', 'Pes', 'Opt', 'PERT', 'Pes', 'Opt', 'PERT', 'Pes', 'Opt', 'PERT', 'Pes'];
+  rows.push(hdr1);
+  rows.push(hdr2);
+
+  // ── Role rows ─────────────────────────────────────────────────────────────
+  d.roleRows.forEach(r => {
+    const rRate = (r.lockedRate != null) ? r.lockedRate : d.rate;
+    const isLocked = r.lockedRate != null;
+    const rO = isLocked ? r.lockedRate : d.o;
+    const rP = isLocked ? r.lockedRate : d.p;
+    const row = [r.name, r.count, r.util/100, rRate, r.startMonth, r.endMonth, r.months, Math.round(r.hrs)];
+    r.costs.forEach(c => row.push(Math.round(c.opt), Math.round(c.pert), Math.round(c.pes)));
+    rows.push(row);
+  });
+
+  // ── Totals row ────────────────────────────────────────────────────────────
+  const totalRow = ['TOTAL', d.totalHC, '', '', '', '', '', Math.round(d.totalHrs)];
+  d.totals.forEach(t => totalRow.push(Math.round(t.opt), Math.round(t.pert), Math.round(t.pes)));
+  rows.push(totalRow);
+
+  // ── Build sheet ───────────────────────────────────────────────────────────
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const dataStartRow = d.notes ? 10 : 9; // 0-indexed row of hdr1
+
+  // Column widths
+  ws['!cols'] = [
+    {wch:28},{wch:7},{wch:7},{wch:10},{wch:8},{wch:8},{wch:9},{wch:9},
+    {wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},
+    {wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}
+  ];
+
+  // Merge period header cells
+  const hr = dataStartRow;
+  ws['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:5}},           // title
+    {s:{r:hr,c:8},e:{r:hr,c:10}},         // Monthly
+    {s:{r:hr,c:11},e:{r:hr,c:13}},        // Quarterly
+    {s:{r:hr,c:14},e:{r:hr,c:16}},        // Semi-Annual
+    {s:{r:hr,c:17},e:{r:hr,c:19}},        // Annual
+  ];
+
+  // Style helpers
+  const bandColors = ['FFF5E6A0','FFE6F4EC','FFE8EEFF','FFFFEAEA'];
+  const headerFill = {patternType:'solid', fgColor:{rgb:'FF1A1D23'}};
+  const boldFont = {bold:true};
+  const currFmt = '"$"#,##0';
+  const pctFmt = '0%';
+
+  // Apply styles row by row
+  const enc = XLSX.utils.encode_cell;
+
+  // Title row
+  if (ws[enc({r:0,c:0})]) {
+    ws[enc({r:0,c:0})].s = {font:{bold:true,sz:14}, fill:{patternType:'solid',fgColor:{rgb:'FF4361EE'}}, font:{bold:true,sz:13,color:{rgb:'FFFFFFFF'}}};
+  }
+
+  // Rate value cells — currency format
+  const rateRow = d.notes ? 6 : 6;
+  [0,1,2,3].forEach(c => {
+    const cell = enc({r:rateRow, c});
+    if (ws[cell]) ws[cell].z = currFmt;
+  });
+
+  // Period header rows — background + bold
+  [hr, hr+1].forEach(rowIdx => {
+    for (let c = 0; c < 20; c++) {
+      const cell = enc({r:rowIdx, c});
+      if (!ws[cell]) ws[cell] = {t:'s', v:''};
+      const bandIdx = c < 8 ? -1 : Math.floor((c-8)/3);
+      const fill = bandIdx >= 0
+        ? {patternType:'solid', fgColor:{rgb:bandColors[bandIdx]}}
+        : {patternType:'solid', fgColor:{rgb:'FFF0F1F4'}};
+      ws[cell].s = {font:{bold:true,sz:9}, fill, alignment:{horizontal:'center'}};
+    }
+  });
+
+  // Data rows — currency format + band colors
+  const dataRows = d.roleRows.length;
+  for (let ri = 0; ri < dataRows + 1; ri++) {
+    const rowIdx = hr + 2 + ri;
+    const isTotal = ri === dataRows;
+    // util % format
+    const utilCell = enc({r:rowIdx, c:2});
+    if (ws[utilCell]) ws[utilCell].z = pctFmt;
+    // rate format
+    const rateCell = enc({r:rowIdx, c:3});
+    if (ws[rateCell]) ws[rateCell].z = currFmt;
+    // cost columns with band color
+    for (let c = 8; c < 20; c++) {
+      const cell = enc({r:rowIdx, c});
+      if (!ws[cell]) continue;
+      ws[cell].z = currFmt;
+      const bandIdx = Math.floor((c-8)/3);
+      const alpha = isTotal ? 'FF' : 'AA';
+      ws[cell].s = {
+        numFmt: currFmt,
+        fill: {patternType:'solid', fgColor:{rgb: alpha + bandColors[bandIdx].slice(2)}},
+        font: isTotal ? {bold:true} : {},
+        alignment: {horizontal:'right'}
+      };
+    }
+    if (isTotal) {
+      // Bold entire total row
+      for (let c = 0; c < 20; c++) {
+        const cell = enc({r:rowIdx, c});
+        if (ws[cell]) ws[cell].s = Object.assign(ws[cell].s||{}, {font:{bold:true}});
+      }
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Estimate');
+
+  // ── Summary sheet ─────────────────────────────────────────────────────────
+  const sumRows = [
+    ['Summary'],
+    ['Estimate', d.name],
+    ['Date', d.date],
+    ['Total headcount', d.totalHC],
+    ['Total alloc hrs/mo', Math.round(d.totalHrs)],
+    [],
+    ['', 'Optimistic', 'PERT', 'Pessimistic'],
+    ['Monthly total', Math.round(d.totals[0].opt), Math.round(d.totals[0].pert), Math.round(d.totals[0].pes)],
+    ['Quarterly total', Math.round(d.totals[1].opt), Math.round(d.totals[1].pert), Math.round(d.totals[1].pes)],
+    ['Semi-annual total', Math.round(d.totals[2].opt), Math.round(d.totals[2].pert), Math.round(d.totals[2].pes)],
+    ['Annual total', Math.round(d.totals[3].opt), Math.round(d.totals[3].pert), Math.round(d.totals[3].pes)],
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(sumRows);
+  wsSummary['!cols'] = [{wch:22},{wch:14},{wch:14},{wch:14}];
+  // Currency format on cost cells
+  [7,8,9,10].forEach(ri => {
+    [1,2,3].forEach(ci => {
+      const cell = enc({r:ri,c:ci});
+      if (wsSummary[cell]) wsSummary[cell].z = currFmt;
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  const filename = (d.name||'quote').replace(/\s+/g,'-').toLowerCase()+'-'+d.date+'.xlsx';
+  XLSX.writeFile(wb, filename);
+  showToast('Excel downloaded', 'success');
+  closeQuoteModal();
+}
+
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -963,5 +1132,6 @@ if (!hasURL) {
 }
 renderSavedList();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </body>
 </html>
