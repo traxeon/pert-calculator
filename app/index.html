@@ -103,7 +103,9 @@ body { min-height: 100vh; }
 .count-input::-webkit-inner-spin-button { display: none; }
 .util-wrap { display: flex; align-items: center; gap: 8px; }
 .util-slider { flex: 1; accent-color: var(--accent); height: 2px; }
-.util-label { font-family: var(--mono); font-size: 11px; color: var(--accent); min-width: 34px; text-align: right; }
+.util-label { font-family: var(--mono); font-size: 11px; color: var(--accent); width: 44px; text-align: right; background: none; border: none; border-bottom: 1px solid transparent; outline: none; padding: 1px 2px; cursor: text; }
+.util-label:hover { border-bottom-color: var(--border2); }
+.util-label:focus { border-bottom-color: var(--accent); }
 .role-cost { font-family: var(--mono); font-size: 12px; color: var(--text2); padding-left: 12px; }
 .role-hrs { font-family: var(--mono); font-size: 11px; color: var(--text3); }
 .del-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; line-height: 1; padding: 2px; border-radius: 4px; transition: color 0.15s; }
@@ -329,8 +331,11 @@ function renderRoles() {
       <input class="count-input" type="number" value="${r.count}" min="1" max="99" oninput="roles[${i}].count=parseInt(this.value)||1;calc()">
       <div class="util-wrap">
         <input type="range" class="util-slider" min="10" max="100" step="5" value="${r.util}"
-          oninput="roles[${i}].util=parseInt(this.value);this.nextElementSibling.textContent=this.value+'%';calc()">
-        <span class="util-label">${r.util}%</span>
+          oninput="roles[${i}].util=parseInt(this.value);this.nextElementSibling.value=this.value+'%';calc()">
+        <input type="text" class="util-label" value="${r.util}%"
+          onchange="var v=Math.min(100,Math.max(10,parseInt(this.value)||10));roles[${i}].util=v;this.value=v+'%';this.parentElement.querySelector('.util-slider').value=v;calc()"
+          onkeydown="if(event.key==='Enter')this.blur()"
+          onfocus="this.value=roles[${i}].util">
       </div>
       <span class="role-cost" id="rc_${i}">—</span>
       <span class="role-hrs" id="rh_${i}">—</span>
