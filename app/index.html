@@ -353,10 +353,10 @@ textarea.form-input { resize: vertical; min-height: 70px; }
 <div class="modal-overlay" id="resetModal">
   <div class="modal">
     <div class="modal-title">Reset estimate</div>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:1rem;line-height:1.6">This will clear the estimate name, all roles, and rate inputs. Your saved estimates in the sidebar will not be affected.</p>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:1rem;line-height:1.6">This will restore the estimate name, roles, and rate inputs to their default values. Your saved estimates in the sidebar will not be affected.</p>
     <div class="modal-btns">
       <button class="btn" onclick="closeResetModal()">Cancel</button>
-      <button class="btn" onclick="resetAll()" style="border-color:var(--danger);color:var(--danger)">Clear everything</button>
+      <button class="btn" onclick="resetAll()" style="border-color:var(--danger);color:var(--danger)">Reset to defaults</button>
     </div>
   </div>
 </div>
@@ -720,14 +720,18 @@ function exportQuotePDF() {
 function confirmReset() { document.getElementById('resetModal').classList.add('open'); }
 function closeResetModal() { document.getElementById('resetModal').classList.remove('open'); }
 function resetAll() {
-  document.getElementById('estimateName').value = '';
-  document.getElementById('rOpt').value = '';
-  document.getElementById('rMl').value = '';
-  document.getElementById('rPes').value = '';
-  roles = [{ name: '', count: 1, util: 100 }];
+  document.getElementById('estimateName').value = 'New Estimate';
+  document.getElementById('rOpt').value = 125;
+  document.getElementById('rMl').value = 150;
+  document.getElementById('rPes').value = 200;
+  roles = [
+    { name: 'Lead architect', count: 1, util: 100, rateOverride: null },
+    { name: 'Developer', count: 2, util: 75, rateOverride: null },
+    { name: 'Analyst', count: 1, util: 50, rateOverride: null },
+  ];
   renderRoles();
   closeResetModal();
-  showToast('Cleared', 'success');
+  showToast('Reset to defaults', 'success');
 }
 
 function showToast(msg, type) {
