@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PERT Staffing Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #171717;
+  --surface2: #1e1e1e;
+  --surface3: #252525;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0ede8;
+  --text2: #8a8680;
+  --text3: #555250;
+  --accent: #c8b560;
+  --accent2: #8fa86e;
+  --danger: #c06060;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Instrument Serif', serif;
+  --sans: 'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+body { min-height: 100vh; }
+
+/* Layout */
+.shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+.sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.main { padding: 2.5rem 2.5rem 4rem; max-width: 900px; }
+
+/* Sidebar */
+.logo { margin-bottom: 2.5rem; }
+.logo-word { font-family: var(--serif); font-size: 22px; color: var(--text); letter-spacing: -0.02em; line-height: 1.2; }
+.logo-word em { color: var(--accent); font-style: italic; }
+.logo-sub { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+
+.nav-section { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; margin: 1.5rem 0 0.5rem; }
+.nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; cursor: pointer; color: var(--text2); font-size: 13px; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--surface3); color: var(--text); }
+.nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border2); flex-shrink: 0; }
+.nav-item.active .nav-dot { background: var(--accent); }
+
+.saved-list { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.saved-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--text2); transition: all 0.15s; }
+.saved-item:hover { background: var(--surface2); color: var(--text); }
+.saved-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-item-del { opacity: 0; font-size: 14px; color: var(--text3); background: none; border: none; cursor: pointer; padding: 0 2px; line-height: 1; transition: opacity 0.15s; }
+.saved-item:hover .saved-item-del { opacity: 1; }
+.saved-item-del:hover { color: var(--danger); }
+.no-saves { font-size: 12px; color: var(--text3); padding: 6px 10px; font-style: italic; }
+
+.sidebar-footer { margin-top: auto; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.footer-btn { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; cursor: pointer; color: var(--text2); font-size: 12px; font-family: var(--sans); background: none; border: none; width: 100%; text-align: left; transition: all 0.15s; }
+.footer-btn:hover { background: var(--surface2); color: var(--text); }
+
+/* Main header */
+.page-header { margin-bottom: 2rem; }
+.page-title { font-family: var(--serif); font-size: 32px; color: var(--text); letter-spacing: -0.02em; line-height: 1.1; }
+.page-title em { color: var(--accent); font-style: italic; }
+.page-meta { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 6px; letter-spacing: 0.04em; }
+.estimate-name-wrap { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.estimate-name { font-size: 14px; font-weight: 500; color: var(--text); background: none; border: none; border-bottom: 1px solid var(--border2); padding: 4px 0; outline: none; min-width: 200px; font-family: var(--sans); }
+.estimate-name:focus { border-bottom-color: var(--accent); }
+.estimate-name::placeholder { color: var(--text3); }
+
+/* Section labels */
+.section { margin-bottom: 2rem; }
+.section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 1rem; }
+.section-title { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; }
+.section-line { flex: 1; height: 1px; background: var(--border); }
+
+/* Rate inputs */
+.rate-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
+.rate-cell { background: var(--surface); padding: 1rem 1.25rem; }
+.rate-label { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.rate-input-wrap { display: flex; align-items: center; gap: 4px; }
+.rate-dollar { font-family: var(--mono); font-size: 13px; color: var(--text3); }
+.rate-input { background: none; border: none; outline: none; font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--text); width: 80px; }
+.rate-input::-webkit-inner-spin-button { display: none; }
+
+/* PERT summary bar */
+.pert-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 2rem; }
+.pert-cell { background: var(--surface2); padding: 0.875rem 1.25rem; }
+.pert-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+.pert-value { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--accent); }
+
+/* Roles table */
+.roles-wrap { background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.roles-header { display: grid; grid-template-columns: 2fr 60px 160px 110px 90px 32px; gap: 0; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+.col-head { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; }
+.role-row { display: grid; grid-template-columns: 2fr 60px 160px 110px 90px 32px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); transition: background 0.1s; gap: 0; }
+.role-row:last-child { border-bottom: none; }
+.role-row:hover { background: var(--surface2); }
+.role-input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); font-family: var(--sans); width: 100%; }
+.role-input::placeholder { color: var(--text3); }
+.count-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; outline: none; font-family: var(--mono); font-size: 13px; color: var(--text); width: 44px; padding: 3px 6px; text-align: center; }
+.count-input::-webkit-inner-spin-button { display: none; }
+.util-wrap { display: flex; align-items: center; gap: 8px; }
+.util-slider { flex: 1; accent-color: var(--accent); height: 2px; }
+.util-label { font-family: var(--mono); font-size: 11px; color: var(--accent); min-width: 34px; text-align: right; }
+.role-cost { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.role-hrs { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+.del-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; line-height: 1; padding: 2px; border-radius: 4px; transition: color 0.15s; }
+.del-btn:hover { color: var(--danger); }
+.add-row { padding: 10px 16px; }
+.add-btn { background: none; border: 1px dashed var(--border2); border-radius: 6px; color: var(--text3); font-size: 12px; font-family: var(--sans); padding: 7px 16px; cursor: pointer; width: 100%; transition: all 0.15s; }
+.add-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(200,181,96,0.04); }
+
+/* Summary metrics */
+.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 2rem; }
+.metric { background: var(--surface); padding: 1rem 1.25rem; }
+.metric-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+.metric-value { font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--text); }
+.metric-sub { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+/* Horizon table */
+.horizon-wrap { background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.horizon-table { width: 100%; border-collapse: collapse; }
+.horizon-table th { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; padding: 10px 16px; border-bottom: 1px solid var(--border); text-align: right; font-weight: 400; }
+.horizon-table th:first-child { text-align: left; }
+.horizon-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; color: var(--text2); text-align: right; }
+.horizon-table td:first-child { text-align: left; color: var(--text); font-size: 13px; }
+.horizon-table td .role-meta { font-size: 10px; color: var(--text3); margin-top: 1px; }
+.horizon-table tr:last-child td { border-bottom: none; background: var(--surface2); color: var(--accent); font-weight: 500; }
+.horizon-table tr:last-child td:first-child { color: var(--text); }
+
+/* Toast */
+.toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--surface3); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 16px; font-size: 12px; color: var(--text); font-family: var(--mono); opacity: 0; transform: translateY(8px); transition: all 0.2s; pointer-events: none; z-index: 100; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { border-color: var(--accent2); color: var(--accent2); }
+
+/* Save modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50; display: none; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; width: 360px; }
+.modal-title { font-family: var(--serif); font-size: 20px; margin-bottom: 1rem; }
+.modal-input { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 12px; font-size: 14px; color: var(--text); font-family: var(--sans); outline: none; margin-bottom: 1rem; }
+.modal-input:focus { border-color: var(--accent); }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.btn { padding: 7px 16px; border-radius: 6px; font-size: 13px; font-family: var(--sans); cursor: pointer; border: 1px solid var(--border2); background: none; color: var(--text2); transition: all 0.15s; }
+.btn:hover { background: var(--surface2); color: var(--text); }
+.btn.primary { background: var(--accent); color: #0f0f0f; border-color: var(--accent); font-weight: 500; }
+.btn.primary:hover { opacity: 0.9; }
+
+input[type=range] { -webkit-appearance: none; appearance: none; height: 2px; background: var(--border2); border-radius: 2px; outline: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-word">PERT <em>Staffing</em></div>
+      <div class="logo-sub">Cost Estimator</div>
+    </div>
+
+    <div class="nav-section">Views</div>
+    <button class="nav-item active"><span class="nav-dot"></span>Estimator</button>
+
+    <div class="nav-section">Saved estimates</div>
+    <div class="saved-list" id="savedList">
+      <div class="no-saves">No saved estimates yet</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="footer-btn" onclick="openSaveModal()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1z"/><path d="M10 2v4H6V2M8 9v4M6 11h4"/></svg>
+        Save estimate
+      </button>
+      <button class="footer-btn" onclick="exportJSON()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 7l3 3 3-3M3 12h10"/></svg>
+        Export JSON
+      </button>
+      <label class="footer-btn" style="cursor:pointer">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 14V6M5 9l3-3 3 3M3 4h10"/></svg>
+        Import JSON
+        <input type="file" accept=".json" style="display:none" onchange="importJSON(event)">
+      </label>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">Contractor <em>cost</em> model</div>
+      <div class="page-meta">ServiceNow · PERT methodology · $125 – $200 / hr</div>
+      <div class="estimate-name-wrap">
+        <input class="estimate-name" id="estimateName" placeholder="Estimate name..." value="Q2 ServiceNow Build">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">Rate inputs</span>
+        <div class="section-line"></div>
+      </div>
+      <div class="rate-grid">
+        <div class="rate-cell">
+          <div class="rate-label">Optimistic</div>
+          <div class="rate-input-wrap"><span class="rate-dollar">$</span><input class="rate-input" type="number" id="rOpt" value="125" oninput="calc()"></div>
+        </div>
+        <div class="rate-cell">
+          <div class="rate-label">Most likely</div>
+          <div class="rate-input-wrap"><span class="rate-dollar">$</span><input class="rate-input" type="number" id="rMl" value="150" oninput="calc()"></div>
+        </div>
+        <div class="rate-cell">
+          <div class="rate-label">Pessimistic</div>
+          <div class="rate-input-wrap"><span class="rate-dollar">$</span><input class="rate-input" type="number" id="rPes" value="200" oninput="calc()"></div>
+        </div>
+      </div>
+      <div class="pert-bar">
+        <div class="pert-cell"><div class="pert-label">PERT rate</div><div class="pert-value" id="pertRate">—</div></div>
+        <div class="pert-cell"><div class="pert-label">Std deviation</div><div class="pert-value" id="pertStd">—</div></div>
+        <div class="pert-cell"><div class="pert-label">Range (±1σ)</div><div class="pert-value" id="pertRange">—</div></div>
+        <div class="pert-cell"><div class="pert-label">Hrs / person / mo</div><div class="pert-value">160</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">Roles &amp; utilization</span>
+        <div class="section-line"></div>
+      </div>
+      <div class="roles-wrap">
+        <div class="roles-header">
+          <span class="col-head">Role</span>
+          <span class="col-head">Count</span>
+          <span class="col-head">Utilization</span>
+          <span class="col-head">Mo. cost</span>
+          <span class="col-head">Alloc hrs</span>
+          <span></span>
+        </div>
+        <div id="rolesBody"></div>
+        <div class="add-row"><button class="add-btn" onclick="addRole()">+ add role</button></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">Summary</span>
+        <div class="section-line"></div>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric"><div class="metric-label">Headcount</div><div class="metric-value" id="sumHC">—</div></div>
+        <div class="metric"><div class="metric-label">Alloc hrs / mo</div><div class="metric-value" id="sumHrs">—</div></div>
+        <div class="metric"><div class="metric-label">Monthly (PERT)</div><div class="metric-value" id="sumMo">—</div></div>
+        <div class="metric"><div class="metric-label">Mo. range</div><div class="metric-value" id="sumRange" style="font-size:13px;padding-top:3px">—</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <span class="section-title">Cost by time horizon</span>
+        <div class="section-line"></div>
+      </div>
+      <div class="horizon-wrap">
+        <table class="horizon-table">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Monthly</th>
+              <th>Quarterly</th>
+              <th>Semi-annual</th>
+              <th>Annual</th>
+            </tr>
+          </thead>
+          <tbody id="horizonBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <div class="modal-title">Save estimate</div>
+    <input class="modal-input" id="saveNameInput" placeholder="Estimate name..." />
+    <div class="modal-btns">
+      <button class="btn" onclick="closeSaveModal()">Cancel</button>
+      <button class="btn primary" onclick="saveEstimate()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'pert_saves_v1';
+const AUTO_KEY = 'pert_auto_v1';
+
+let roles = [
+  { name: 'SN architect', count: 1, util: 100 },
+  { name: 'SN developer', count: 2, util: 75 },
+  { name: 'CMDB analyst', count: 1, util: 50 },
+];
+
+function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtHrs(n) { return Math.round(n).toLocaleString(); }
+
+function getPertRate() {
+  const o = parseFloat(document.getElementById('rOpt').value) || 0;
+  const m = parseFloat(document.getElementById('rMl').value) || 0;
+  const p = parseFloat(document.getElementById('rPes').value) || 0;
+  return { rate: (o + 4*m + p)/6, std: (p-o)/6, o, m, p };
+}
+
+function renderRoles() {
+  const body = document.getElementById('rolesBody');
+  body.innerHTML = '';
+  roles.forEach((r, i) => {
+    const div = document.createElement('div');
+    div.className = 'role-row';
+    div.innerHTML = `
+      <input class="role-input" type="text" value="${r.name}" placeholder="Role name" oninput="roles[${i}].name=this.value;calcHorizon()">
+      <input class="count-input" type="number" value="${r.count}" min="1" max="99" oninput="roles[${i}].count=parseInt(this.value)||1;calc()">
+      <div class="util-wrap">
+        <input type="range" class="util-slider" min="10" max="100" step="5" value="${r.util}"
+          oninput="roles[${i}].util=parseInt(this.value);this.nextElementSibling.textContent=this.value+'%';calc()">
+        <span class="util-label">${r.util}%</span>
+      </div>
+      <span class="role-cost" id="rc_${i}">—</span>
+      <span class="role-hrs" id="rh_${i}">—</span>
+      <button class="del-btn" onclick="removeRole(${i})">×</button>
+    `;
+    body.appendChild(div);
+  });
+  calc();
+}
+
+function calc() {
+  const { rate, std, o, p } = getPertRate();
+  document.getElementById('pertRate').textContent = '$' + rate.toFixed(2) + '/hr';
+  document.getElementById('pertStd').textContent = '±$' + std.toFixed(2);
+  document.getElementById('pertRange').textContent = '$' + Math.round(rate-std) + ' – $' + Math.round(rate+std);
+
+  let totalHC=0, totalHrs=0, totalMo=0, totalMoO=0, totalMoP=0;
+  roles.forEach((r, i) => {
+    const hrs = 160 * (r.util/100) * r.count;
+    const cost = hrs * rate;
+    totalHC += r.count;
+    totalHrs += hrs;
+    totalMo += cost;
+    totalMoO += hrs * o;
+    totalMoP += hrs * p;
+    const rc = document.getElementById('rc_'+i);
+    const rh = document.getElementById('rh_'+i);
+    if (rc) rc.textContent = fmt(cost);
+    if (rh) rh.textContent = fmtHrs(hrs) + ' hrs';
+  });
+
+  document.getElementById('sumHC').textContent = totalHC;
+  document.getElementById('sumHrs').textContent = fmtHrs(totalHrs) + ' hrs';
+  document.getElementById('sumMo').textContent = fmt(totalMo);
+  document.getElementById('sumRange').textContent = fmt(totalMoO) + ' – ' + fmt(totalMoP);
+
+  calcHorizon(rate, o, p);
+  autoSave();
+}
+
+function calcHorizon(rate, o, p) {
+  if (rate === undefined) { const r = getPertRate(); rate=r.rate; o=r.o; p=r.p; }
+  const body = document.getElementById('horizonBody');
+  body.innerHTML = '';
+  let totals = [0,0,0,0];
+  roles.forEach(r => {
+    const hrs = 160 * (r.util/100) * r.count;
+    const mo = hrs * rate;
+    const vals = [mo, mo*3, mo*6, mo*12];
+    vals.forEach((v,i) => totals[i]+=v);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.name}<div class="role-meta">×${r.count} @ ${r.util}%</div></td>` +
+      vals.map(v=>`<td>${fmt(v)}</td>`).join('');
+    body.appendChild(tr);
+  });
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>Total</td>` + totals.map(v=>`<td>${fmt(v)}</td>`).join('');
+  body.appendChild(tr);
+}
+
+function addRole() { roles.push({name:'New role',count:1,util:100}); renderRoles(); }
+function removeRole(i) { if(roles.length===1) return; roles.splice(i,1); renderRoles(); }
+
+// Persistence
+function getState() {
+  return {
+    name: document.getElementById('estimateName').value,
+    rOpt: document.getElementById('rOpt').value,
+    rMl: document.getElementById('rMl').value,
+    rPes: document.getElementById('rPes').value,
+    roles: JSON.parse(JSON.stringify(roles))
+  };
+}
+
+function loadState(state) {
+  document.getElementById('estimateName').value = state.name || '';
+  document.getElementById('rOpt').value = state.rOpt || 125;
+  document.getElementById('rMl').value = state.rMl || 150;
+  document.getElementById('rPes').value = state.rPes || 200;
+  roles = state.roles || roles;
+  renderRoles();
+}
+
+function autoSave() {
+  try { localStorage.setItem(AUTO_KEY, JSON.stringify(getState())); } catch(e){}
+}
+
+function getSaves() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); } catch(e){ return []; }
+}
+
+function setSaves(saves) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saves)); } catch(e){}
+}
+
+function renderSavedList() {
+  const saves = getSaves();
+  const el = document.getElementById('savedList');
+  if (!saves.length) { el.innerHTML = '<div class="no-saves">No saved estimates yet</div>'; return; }
+  el.innerHTML = saves.map((s,i) => `
+    <div class="saved-item" onclick="loadSave(${i})">
+      <span class="saved-item-name">${s.name || 'Untitled'}</span>
+      <button class="saved-item-del" onclick="event.stopPropagation();deleteSave(${i})">×</button>
+    </div>
+  `).join('');
+}
+
+function loadSave(i) {
+  const saves = getSaves();
+  if (saves[i]) { loadState(saves[i]); showToast('Loaded: ' + (saves[i].name||'Untitled'), 'success'); }
+}
+
+function deleteSave(i) {
+  const saves = getSaves();
+  saves.splice(i,1);
+  setSaves(saves);
+  renderSavedList();
+  showToast('Deleted');
+}
+
+function openSaveModal() {
+  document.getElementById('saveNameInput').value = document.getElementById('estimateName').value;
+  document.getElementById('saveModal').classList.add('open');
+  document.getElementById('saveNameInput').focus();
+}
+
+function closeSaveModal() { document.getElementById('saveModal').classList.remove('open'); }
+
+function saveEstimate() {
+  const name = document.getElementById('saveNameInput').value.trim() || 'Untitled';
+  document.getElementById('estimateName').value = name;
+  const saves = getSaves();
+  const state = getState();
+  state.name = name;
+  state.savedAt = new Date().toISOString();
+  saves.unshift(state);
+  setSaves(saves);
+  renderSavedList();
+  closeSaveModal();
+  showToast('Saved: ' + name, 'success');
+}
+
+function exportJSON() {
+  const data = { version: 1, exportedAt: new Date().toISOString(), estimates: getSaves(), current: getState() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pert-estimates.json';
+  a.click();
+  showToast('Exported', 'success');
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.estimates) { setSaves(data.estimates); renderSavedList(); }
+      if (data.current) loadState(data.current);
+      showToast('Imported', 'success');
+    } catch { showToast('Invalid file'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type?' '+type:'');
+  setTimeout(() => t.className='toast', 2200);
+}
+
+document.getElementById('saveModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeSaveModal(); });
+document.getElementById('saveNameInput').addEventListener('keydown', e => { if(e.key==='Enter') saveEstimate(); if(e.key==='Escape') closeSaveModal(); });
+
+// Boot
+const auto = localStorage.getItem(AUTO_KEY);
+if (auto) { try { loadState(JSON.parse(auto)); } catch { renderRoles(); } }
+else renderRoles();
+renderSavedList();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+services:
+  pert-calculator:
+    build:
+      context: /opt/stacks/pert-calculator
+    container_name: pert-calculator
+    restart: unless-stopped
+    networks:
+      - reverse_proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pert.rule=Host(`est.galvoti.net`)
+      - traefik.http.routers.pert.entrypoints=websecure
+      - traefik.http.routers.pert.tls=true
+      - traefik.http.routers.pert.tls.certresolver=cloudflare
+      - traefik.http.services.pert.loadbalancer.server.port=80
+      - dockdns.name=est.galvoti.net
+      - dockdns.cname=base.galvoti.net
+      - dockdns.ttl=300
+      - dockdns.proxied=false
+
+networks:
+  reverse_proxy:
+    external: true
