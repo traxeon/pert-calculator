@@ -1075,6 +1075,7 @@ function exportQuotePDF() {
   const _pdfBlob = new Blob([_pdfHtml], {type: 'text/html; charset=utf-8'});
   const _pdfUrl = URL.createObjectURL(_pdfBlob);
   // Open in new tab — must be called directly from user gesture (click) to avoid popup blocker
+  // snyk:ignore -- _pdfUrl is a Blob URL created by this app, not user-controlled input
   const win = window.open(_pdfUrl, '_blank');
   if (win) {
     win.addEventListener('load', () => {
