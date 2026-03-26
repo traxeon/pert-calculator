@@ -994,7 +994,6 @@ function exportQuotePDF() {
   const d = getQuoteData();
   const { m } = getPertRate();
   const fmtN = n => '$'+Math.round(n).toLocaleString();
-  const fmtN = n => '$'+Math.round(n).toLocaleString();
   const bandBg = ['#fef9e7','#edfbf3','#eef1ff','#fff0f0'];
   const bandBgStrong = ['#fdf3c0','#d4f5e4','#d8deff','#ffd6d6'];
   let roleRowsHTML = d.roleRows.map(r => {
