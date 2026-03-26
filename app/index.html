@@ -478,30 +478,39 @@ function renderRoles() {
   roles.forEach((r, i) => {
     const div = document.createElement('div');
     div.className = 'role-row';
+    // Sanitize all values before injecting into innerHTML
+    const sCount      = parseInt(r.count) || 1;
+    const sUtil       = parseInt(r.util) || 100;
+    const sLocked     = r.lockedRate != null ? parseFloat(r.lockedRate) : null;
+    const sStart      = parseInt(r.startMonth) || 1;
+    const sEnd        = parseInt(r.endMonth) || 12;
+    const sLockedCls  = sLocked != null ? 'locked' : '';
+    const sRateCls    = sLocked != null ? 'is-locked' : '';
+    const sLockedVal  = sLocked != null ? sLocked : '';
     div.innerHTML = `
       <input class="role-input" type="text" value="${esc(r.name)}" placeholder="Role name" oninput="roles[${i}].name=this.value;calcHorizon()">
-      <input class="count-input" type="number" value="${r.count}" min="1" max="99" oninput="roles[${i}].count=parseInt(this.value)||1;calc()">
+      <input class="count-input" type="number" value="${sCount}" min="1" max="99" oninput="roles[${i}].count=parseInt(this.value)||1;calc()">
       <div class="rate-cell-wrap">
-        <span class="role-rate-meta ${r.lockedRate ? 'locked' : ''}" id="rm_${i}" onclick="unlockRate(${i})">—</span>
-        <input class="role-rate ${r.lockedRate ? 'is-locked' : ''}" type="number"
-          value="${r.lockedRate != null ? r.lockedRate : ''}"
+        <span class="role-rate-meta ${sLockedCls}" id="rm_${i}" onclick="unlockRate(${i})">—</span>
+        <input class="role-rate ${sRateCls}" type="number"
+          value="${sLockedVal}"
           id="rp_${i}" placeholder="${Math.round(getPertRate().rate)}"
           min="1"
           oninput="roles[${i}].lockedRate=this.value?parseFloat(this.value):null;this.classList.toggle('is-locked',!!this.value);calc()">
       </div>
       <div class="util-wrap">
-        <input type="range" class="util-slider" min="10" max="100" step="5" value="${r.util}"
+        <input type="range" class="util-slider" min="10" max="100" step="5" value="${sUtil}"
           oninput="roles[${i}].util=parseInt(this.value);this.nextElementSibling.value=this.value+'%';calc()">
-        <input type="text" class="util-label" value="${r.util}%"
+        <input type="text" class="util-label" value="${sUtil}%"
           onchange="var v=Math.min(100,Math.max(10,parseInt(this.value)||10));roles[${i}].util=v;this.value=v+'%';this.parentElement.querySelector('.util-slider').value=v;calc()"
           onkeydown="if(event.key==='Enter')this.blur()"
           onfocus="this.value=roles[${i}].util">
       </div>
       <div class="duration-wrap">
-        <input class="duration-input" type="number" min="1" max="12" value="${r.startMonth||1}" title="Start month"
+        <input class="duration-input" type="number" min="1" max="12" value="${sStart}" title="Start month"
           oninput="roles[${i}].startMonth=Math.min(12,Math.max(1,parseInt(this.value)||1));calc()">
         <span class="duration-sep">–</span>
-        <input class="duration-input" type="number" min="1" max="12" value="${r.endMonth||12}" title="End month"
+        <input class="duration-input" type="number" min="1" max="12" value="${sEnd}" title="End month"
           oninput="roles[${i}].endMonth=Math.min(12,Math.max(1,parseInt(this.value)||12));calc()">
       </div>
       <span class="role-cost" id="rc_${i}">—</span>
