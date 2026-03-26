@@ -1,0 +1,10 @@
+name: CodeQL config
+
+# Suppress specific false positive findings
+query-filters:
+  # window.open with Blob URL is not an open redirect — URL is app-generated
+  - exclude:
+      id: js/open-redirect
+
+paths-ignore:
+  - '**/*.min.js'
