@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'none';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Contingent Labor Cost Modeler</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -435,6 +436,32 @@ let roles = [
   { name: 'Analyst', count: 1, util: 50, lockedRate: null, startMonth: 1, endMonth: 12 },
 ];
 
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+
+function sanitizeState(state) {
+  if (!state || typeof state !== 'object') return null;
+  const safeStr = (v, fb='') => typeof v === 'string' ? v.slice(0,500) : fb;
+  const safeNum = (v, fb=0) => isFinite(Number(v)) ? Number(v) : fb;
+  const safeArr = (v) => Array.isArray(v) ? v.slice(0,50) : [];
+  return {
+    name: safeStr(state.name),
+    rOpt: safeNum(state.rOpt, 125),
+    rMl:  safeNum(state.rMl,  150),
+    rPes: safeNum(state.rPes, 200),
+    roles: safeArr(state.roles).map(r => ({
+      name:       safeStr(r.name, 'Role'),
+      count:      Math.max(1, Math.min(99, safeNum(r.count, 1))),
+      util:       Math.max(10, Math.min(100, safeNum(r.util, 100))),
+      lockedRate: r.lockedRate != null ? Math.max(0, safeNum(r.lockedRate)) : null,
+      startMonth: Math.max(1, Math.min(12, safeNum(r.startMonth, 1))),
+      endMonth:   Math.max(1, Math.min(12, safeNum(r.endMonth, 12))),
+    }))
+  };
+}
+
 function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
 function fmtHrs(n) { return Math.round(n).toLocaleString(); }
 
@@ -452,7 +479,7 @@ function renderRoles() {
     const div = document.createElement('div');
     div.className = 'role-row';
     div.innerHTML = `
-      <input class="role-input" type="text" value="${r.name}" placeholder="Role name" oninput="roles[${i}].name=this.value;calcHorizon()">
+      <input class="role-input" type="text" value="${esc(r.name)}" placeholder="Role name" oninput="roles[${i}].name=this.value;calcHorizon()">
       <input class="count-input" type="number" value="${r.count}" min="1" max="99" oninput="roles[${i}].count=parseInt(this.value)||1;calc()">
       <div class="rate-cell-wrap">
         <span class="role-rate-meta ${r.lockedRate ? 'locked' : ''}" id="rm_${i}" onclick="unlockRate(${i})">—</span>
@@ -562,7 +589,7 @@ function calcHorizon(rate, o, p) {
     const overrideTag = (r.lockedRate != null) ? ' <span style="font-size:9px;color:var(--accent2)">★ $'+r.lockedRate+'/hr</span>' : '';
     const durTag = (start!==1||end!==12) ? `<span style="font-size:9px;color:var(--text3)"> mo ${start}–${end}</span>` : '';
     const tr = document.createElement('tr');
-    let cells = `<td>${r.name}${overrideTag}${durTag}<div class="role-meta">×${r.count} @ ${r.util}% · ${months} mo</div></td>`;
+    let cells = `<td>${esc(r.name)}${overrideTag}${durTag}<div class="role-meta">×${r.count} @ ${r.util}% · ${months} mo</div></td>`;
     const bands = ['band-mo','band-q','band-sa','band-an'];
     // cap each multiplier to role's actual months
     const cappedMults = [1, 3, 6, 12].map(m => Math.min(m, months));
@@ -599,12 +626,14 @@ function getState() {
   };
 }
 
-function loadState(state) {
-  document.getElementById('estimateName').value = state.name || '';
-  document.getElementById('rOpt').value = state.rOpt || 125;
-  document.getElementById('rMl').value = state.rMl || 150;
-  document.getElementById('rPes').value = state.rPes || 200;
-  roles = state.roles || roles;
+function loadState(raw) {
+  const state = sanitizeState(raw);
+  if (!state) return;
+  document.getElementById('estimateName').value = state.name;
+  document.getElementById('rOpt').value = state.rOpt;
+  document.getElementById('rMl').value = state.rMl;
+  document.getElementById('rPes').value = state.rPes;
+  roles = state.roles.length ? state.roles : roles;
   renderRoles();
 }
 
@@ -629,7 +658,7 @@ function renderSavedList() {
     const verBadge = isVer ? `<span class="saved-item-ver">${(s.name||'').match(/ (v\d+)$/)[1]}</span>` : '';
     const dispName = isVer ? (s.name||'').replace(/ v\d+$/, '') : (s.name||'Untitled');
     return `<div class="saved-item" onclick="loadSave(${i})">
-      <span class="saved-item-name" title="${s.name||''}">${dispName}</span>
+      <span class="saved-item-name" title="${esc(s.name)||''}">${esc(dispName)}</span>
       ${verBadge}
       <button class="saved-item-del" onclick="event.stopPropagation();deleteSave(${i})">×</button>
     </div>`;
@@ -806,7 +835,7 @@ function exportQuoteCSV() {
 function exportQuotePDF() {
   const d = getQuoteData();
   const { m } = getPertRate();
-  const win = window.open('', '_blank');
+  const win = window.open('', '_blank', 'noopener,noreferrer');
   const fmtN = n => '$'+Math.round(n).toLocaleString();
   const bandBg = ['#fef9e7','#edfbf3','#eef1ff','#fff0f0'];
   const bandBgStrong = ['#fdf3c0','#d4f5e4','#d8deff','#ffd6d6'];
@@ -815,8 +844,8 @@ function exportQuotePDF() {
     const rateLabel = r.lockedRate != null ? `$${r.lockedRate} <span class="rate-locked">★</span>` : `$${d.rate.toFixed(0)}`;
     const durLabel = `${r.startMonth}–${r.endMonth}`;
     return `<tr>
-      <td>${r.name}</td>
-      <td style="text-align:center">${r.count}</td>
+      <td>${esc(r.name)}</td>
+      <td style="text-align:center">${esc(r.count)}</td>
       <td style="text-align:center">${r.util}%</td>
       <td style="text-align:center">${rateLabel}</td>
       <td style="text-align:center">${durLabel}</td>
@@ -839,7 +868,7 @@ function exportQuotePDF() {
     `<th colspan="3" style="text-align:center;background:${hdrColors[i]};color:#1a1a1a;padding:6px">${l}</th>`).join('');
   let subHdr2 = d.labels.map((l,i) =>
     `<th style="background:${bandBg[i]};color:#1a1a1a;font-size:9px">Opt</th><th style="background:${bandBgStrong[i]};color:#1a1a1a;font-size:9px">PERT</th><th style="background:${bandBg[i]};color:#1a1a1a;font-size:9px">Pes</th>`).join('');
-  win.document.write(`<!DOCTYPE html><html><head><title>${d.name}</title>
+  win.document.write(`<!DOCTYPE html><html><head><title>${esc(d.name)}</title>
   <style>
     body { font-family: 'Helvetica Neue', sans-serif; color: #1a1a1a; margin: 0; padding: 40px; font-size: 12px; }
     h1 { font-size: 22px; font-weight: 300; margin: 0 0 4px; letter-spacing: -0.02em; }
@@ -860,9 +889,9 @@ function exportQuotePDF() {
     .footer { margin-top: 16px; font-size: 9.5px; color: #aaa; border-top: 1px solid #e8e8e8; padding-top: 10px; }
     @media print { body { padding: 20px; } }
   </style></head><body>
-  <h1>${d.name}</h1>
-  <div class="meta">Date: ${d.date} &nbsp;·&nbsp; PERT Cost Estimate</div>
-  ${d.notes ? `<div class="notes"><strong>Scope / Notes:</strong><br>${d.notes.replace(/\n/g,'<br>')}</div>` : ''}
+  <h1>${esc(d.name)}</h1>
+  <div class="meta">Date: ${esc(d.date)} &nbsp;·&nbsp; PERT Cost Estimate</div>
+  ${d.notes ? `<div class="notes"><strong>Scope / Notes:</strong><br>${esc(d.notes).replace(/\n/g,'<br>')}</div>` : ''}
   <div class="rates">
     <div class="rate-box"><div class="lbl">Optimistic rate</div><div class="val">$${d.o}/hr</div></div>
     <div class="rate-box"><div class="lbl">Most likely rate</div><div class="val">$${m}/hr</div></div>
