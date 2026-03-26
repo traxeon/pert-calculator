@@ -20,6 +20,7 @@ user's browser via localStorage — no database, no backend.
 - Export quote as PDF, Excel (.xlsx), or CSV
 - Download a standalone formula-driven Excel template workbook
 - Print view via browser print dialog
+- Dark mode — solarized warm palette, toggleable from the sidebar, respects OS preference
 
 ---
 
@@ -72,12 +73,13 @@ The image is public — no registry credentials needed in Portainer.
 
 ## Persistence model
 
-State is stored in each user's browser via `localStorage` under two keys:
+State is stored in each user's browser via `localStorage` under these keys:
 
 | Key | Contents |
 |---|---|
 | `pert_auto_v1` | Auto-saved current state (updates on every change) |
 | `pert_saves_v1` | Array of named saved estimates |
+| `pert_darkmode` | User's dark mode preference (`1` = dark, `0` = light) |
 
 Saved estimates support versioning — saving over an existing name prompts to
 overwrite or save as a new version (v2, v3...).
