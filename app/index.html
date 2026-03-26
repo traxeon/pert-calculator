@@ -586,8 +586,8 @@ function calcHorizon(rate, o, p) {
     const rO    = (r.lockedRate != null) ? r.lockedRate : o;
     const rP    = (r.lockedRate != null) ? r.lockedRate : p;
     const moO = hrs * rO, moR = hrs * rRate, moP = hrs * rP;
-    const overrideTag = (r.lockedRate != null) ? ' <span style="font-size:9px;color:var(--accent2)">★ $'+r.lockedRate+'/hr</span>' : '';
-    const durTag = (start!==1||end!==12) ? `<span style="font-size:9px;color:var(--text3)"> mo ${start}–${end}</span>` : '';
+    const overrideTag = (r.lockedRate != null) ? ' <span style="font-size:9px;color:var(--accent2)">★ $'+esc(String(r.lockedRate))+'/hr</span>' : '';
+    const durTag = (start!==1||end!==12) ? `<span style="font-size:9px;color:var(--text3)"> mo ${esc(String(start))}–${esc(String(end))}</span>` : '';
     const tr = document.createElement('tr');
     let cells = `<td>${esc(r.name)}${overrideTag}${durTag}<div class="role-meta">×${r.count} @ ${r.util}% · ${months} mo</div></td>`;
     const bands = ['band-mo','band-q','band-sa','band-an'];
@@ -655,7 +655,7 @@ function renderSavedList() {
   if (!saves.length) { el.innerHTML = '<div class="no-saves">No saved estimates yet</div>'; return; }
   el.innerHTML = saves.map((s,i) => {
     const isVer = / v\d+$/.test(s.name||'');
-    const verBadge = isVer ? `<span class="saved-item-ver">${(s.name||'').match(/ (v\d+)$/)[1]}</span>` : '';
+    const verBadge = isVer ? `<span class="saved-item-ver">${esc((s.name||'').match(/ (v\d+)$/)[1])}</span>` : '';
     const dispName = isVer ? (s.name||'').replace(/ v\d+$/, '') : (s.name||'Untitled');
     return `<div class="saved-item" onclick="loadSave(${i})">
       <span class="saved-item-name" title="${esc(s.name)||''}">${esc(dispName)}</span>
