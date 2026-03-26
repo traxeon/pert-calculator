@@ -1109,8 +1109,8 @@ function downloadTemplate() {
     [],
     ['PERT Rate', {f:'(B4+4*B5+B6)/6'}, 'Formula: (O + 4×ML + P) ÷ 6'],
     ['Std Deviation', {f:'(B6-B4)/6'}, 'Formula: (P - O) ÷ 6'],
-    ['Range Low (−1σ)', {f:'B11-B12'}, 'PERT Rate minus 1 std deviation'],
-    ['Range High (+1σ)', {f:'B11+B12'}, 'PERT Rate plus 1 std deviation'],
+    ['Range Low (−1σ)', {f:'B8-B9'}, 'PERT Rate minus 1 std deviation'],
+    ['Range High (+1σ)', {f:'B8+B9'}, 'PERT Rate plus 1 std deviation'],
     [],
     ['Hours/person/month', 160, 'Standard 40hr week × 4 weeks'],
   ];
@@ -1120,10 +1120,10 @@ function downloadTemplate() {
   if (!wsP['A1']) wsP['A1'] = {t:'s',v:'PERT Rate Calculator'};
   wsP['A1'].s = {font:{bold:true,sz:14,color:{rgb:'FF4361EE'}}};
   // Style input cells
-  ['B4','B5','B6','B16'].forEach(ref => { if(wsP[ref]){ wsP[ref].s = inputCell; wsP[ref].z = currFmt0; }});
+  ['B4','B5','B6','B13'].forEach(ref => { if(wsP[ref]){ wsP[ref].s = inputCell; wsP[ref].z = currFmt0; }});
   // Style formula cells
   ['B11','B12','B13','B14'].forEach(ref => { if(wsP[ref]){ wsP[ref].s = calcCell('FFEEF1FF'); wsP[ref].z = currFmt; }});
-  wsP['!ref'] = 'A1:C16';
+  wsP['!ref'] = 'A1:C13';
   XLSX.utils.book_append_sheet(wb, wsP, 'PERT Calculator');
 
   // ── SHEET 2: Inputs ────────────────────────────────────────────────────────
@@ -1261,9 +1261,6 @@ function downloadTemplate() {
     wsH[enc({r:row-1,c:0})] = {t:'s', f:`Inputs!A${iRow}`};
     periods.forEach((p,pi) => {
       const baseCol = 1 + pi*3;
-      const optCol = String.fromCharCode(66+baseCol-1);
-      const pertCol = String.fromCharCode(67+baseCol-1);
-      const pesCol = String.fromCharCode(68+baseCol-1);
       // Cap mult to role duration
       const durRef = `Inputs!G${iRow}`;
       const cappedMult = `MIN(${p.mult},IF(${durRef}<>"",${durRef},12))`;
