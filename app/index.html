@@ -472,49 +472,145 @@ function getPertRate() {
 
 function renderRoles() {
   const body = document.getElementById('rolesBody');
-  body.innerHTML = '';
+  body.replaceChildren();
   roles.forEach((r, i) => {
+    const sCount  = parseInt(r.count) || 1;
+    const sUtil   = parseInt(r.util) || 100;
+    const sLocked = r.lockedRate != null ? parseFloat(r.lockedRate) : null;
+    const sStart  = parseInt(r.startMonth) || 1;
+    const sEnd    = parseInt(r.endMonth) || 12;
+
     const div = document.createElement('div');
     div.className = 'role-row';
-    // Sanitize all values before injecting into innerHTML
-    const sCount      = parseInt(r.count) || 1;
-    const sUtil       = parseInt(r.util) || 100;
-    const sLocked     = r.lockedRate != null ? parseFloat(r.lockedRate) : null;
-    const sStart      = parseInt(r.startMonth) || 1;
-    const sEnd        = parseInt(r.endMonth) || 12;
-    const sLockedCls  = sLocked != null ? 'locked' : '';
-    const sRateCls    = sLocked != null ? 'is-locked' : '';
-    const sLockedVal  = sLocked != null ? sLocked : '';
-    div.innerHTML = `
-      <input class="role-input" type="text" value="${esc(r.name)}" placeholder="Role or name" oninput="roles[${i}].name=this.value;calcHorizon()">
-      <input class="count-input" type="number" value="${sCount}" min="1" max="99" oninput="roles[${i}].count=parseInt(this.value)||1;calc()">
-      <div class="rate-cell-wrap">
-        <span class="role-rate-meta ${sLockedCls}" id="rm_${i}" onclick="unlockRate(${i})">—</span>
-        <input class="role-rate ${sRateCls}" type="number"
-          value="${sLockedVal}"
-          id="rp_${i}" placeholder="${Math.round(getPertRate().rate)}"
-          min="1"
-          oninput="roles[${i}].lockedRate=this.value?parseFloat(this.value):null;this.classList.toggle('is-locked',!!this.value);calc()">
-      </div>
-      <div class="util-wrap">
-        <input type="range" class="util-slider" min="10" max="100" step="5" value="${sUtil}"
-          oninput="roles[${i}].util=parseInt(this.value);this.nextElementSibling.value=this.value+'%';calc()">
-        <input type="text" class="util-label" value="${sUtil}%"
-          onchange="var v=Math.min(100,Math.max(10,parseInt(this.value)||10));roles[${i}].util=v;this.value=v+'%';this.parentElement.querySelector('.util-slider').value=v;calc()"
-          onkeydown="if(event.key==='Enter')this.blur()"
-          onfocus="this.value=roles[${i}].util">
-      </div>
-      <div class="duration-wrap">
-        <input class="duration-input" type="number" min="1" max="12" value="${sStart}" title="Start month"
-          oninput="roles[${i}].startMonth=Math.min(12,Math.max(1,parseInt(this.value)||1));calc()">
-        <span class="duration-sep">–</span>
-        <input class="duration-input" type="number" min="1" max="12" value="${sEnd}" title="End month"
-          oninput="roles[${i}].endMonth=Math.min(12,Math.max(1,parseInt(this.value)||12));calc()">
-      </div>
-      <span class="role-cost" id="rc_${i}">—</span>
-      <span class="role-hrs" id="rh_${i}">—</span>
-      <button class="del-btn" onclick="removeRole(${i})">×</button>
-    `;
+
+    // Role name input
+    const nameInput = document.createElement('input');
+    nameInput.className = 'role-input';
+    nameInput.type = 'text';
+    nameInput.value = r.name || '';
+    nameInput.placeholder = 'Role or name';
+    nameInput.addEventListener('input', function() { roles[i].name = this.value; calcHorizon(); });
+    div.appendChild(nameInput);
+
+    // Count input
+    const countInput = document.createElement('input');
+    countInput.className = 'count-input';
+    countInput.type = 'number';
+    countInput.value = sCount;
+    countInput.min = 1; countInput.max = 99;
+    countInput.addEventListener('input', function() { roles[i].count = parseInt(this.value)||1; calc(); });
+    div.appendChild(countInput);
+
+    // Rate cell wrap
+    const rateWrap = document.createElement('div');
+    rateWrap.className = 'rate-cell-wrap';
+
+    const rateMeta = document.createElement('span');
+    rateMeta.className = 'role-rate-meta' + (sLocked != null ? ' locked' : '');
+    rateMeta.id = 'rm_' + i;
+    rateMeta.textContent = '—';
+    rateMeta.addEventListener('click', () => unlockRate(i));
+    rateWrap.appendChild(rateMeta);
+
+    const rateInput = document.createElement('input');
+    rateInput.className = 'role-rate' + (sLocked != null ? ' is-locked' : '');
+    rateInput.type = 'number';
+    rateInput.id = 'rp_' + i;
+    rateInput.min = 1;
+    rateInput.placeholder = Math.round(getPertRate().rate);
+    if (sLocked != null) rateInput.value = sLocked;
+    rateInput.addEventListener('input', function() {
+      roles[i].lockedRate = this.value ? parseFloat(this.value) : null;
+      this.classList.toggle('is-locked', !!this.value);
+      calc();
+    });
+    rateWrap.appendChild(rateInput);
+    div.appendChild(rateWrap);
+
+    // Util wrap
+    const utilWrap = document.createElement('div');
+    utilWrap.className = 'util-wrap';
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'util-slider';
+    slider.min = 10; slider.max = 100; slider.step = 5;
+    slider.value = sUtil;
+    const utilLabel = document.createElement('input');
+    utilLabel.type = 'text';
+    utilLabel.className = 'util-label';
+    utilLabel.value = sUtil + '%';
+    slider.addEventListener('input', function() {
+      roles[i].util = parseInt(this.value);
+      utilLabel.value = this.value + '%';
+      calc();
+    });
+    utilLabel.addEventListener('change', function() {
+      const v = Math.min(100, Math.max(10, parseInt(this.value)||10));
+      roles[i].util = v;
+      this.value = v + '%';
+      slider.value = v;
+      calc();
+    });
+    utilLabel.addEventListener('keydown', function(e) { if(e.key==='Enter') this.blur(); });
+    utilLabel.addEventListener('focus', function() { this.value = roles[i].util; });
+    utilWrap.appendChild(slider);
+    utilWrap.appendChild(utilLabel);
+    div.appendChild(utilWrap);
+
+    // Duration wrap
+    const durWrap = document.createElement('div');
+    durWrap.className = 'duration-wrap';
+
+    const startInput = document.createElement('input');
+    startInput.className = 'duration-input';
+    startInput.type = 'number';
+    startInput.min = 1; startInput.max = 12;
+    startInput.value = sStart;
+    startInput.title = 'Start month';
+    startInput.addEventListener('input', function() {
+      roles[i].startMonth = Math.min(12, Math.max(1, parseInt(this.value)||1)); calc();
+    });
+
+    const durSep = document.createElement('span');
+    durSep.className = 'duration-sep';
+    durSep.textContent = '–';
+
+    const endInput = document.createElement('input');
+    endInput.className = 'duration-input';
+    endInput.type = 'number';
+    endInput.min = 1; endInput.max = 12;
+    endInput.value = sEnd;
+    endInput.title = 'End month';
+    endInput.addEventListener('input', function() {
+      roles[i].endMonth = Math.min(12, Math.max(1, parseInt(this.value)||12)); calc();
+    });
+
+    durWrap.appendChild(startInput);
+    durWrap.appendChild(durSep);
+    durWrap.appendChild(endInput);
+    div.appendChild(durWrap);
+
+    // Cost and hrs spans
+    const costSpan = document.createElement('span');
+    costSpan.className = 'role-cost';
+    costSpan.id = 'rc_' + i;
+    costSpan.textContent = '—';
+    div.appendChild(costSpan);
+
+    const hrsSpan = document.createElement('span');
+    hrsSpan.className = 'role-hrs';
+    hrsSpan.id = 'rh_' + i;
+    hrsSpan.textContent = '—';
+    div.appendChild(hrsSpan);
+
+    // Delete button
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del-btn';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', () => removeRole(i));
+    div.appendChild(delBtn);
+
     body.appendChild(div);
   });
   calc();
@@ -582,40 +678,68 @@ function calc() {
 function calcHorizon(rate, o, p) {
   if (rate === undefined) { const r = getPertRate(); rate=r.rate; o=r.o; p=r.p; }
   const body = document.getElementById('horizonBody');
-  body.innerHTML = '';
+  body.replaceChildren();
   const mults = [1, 3, 6, 12];
   let totalsO=[0,0,0,0], totalsP=[0,0,0,0], totalsR=[0,0,0,0];
+  const bands = ['band-mo','band-q','band-sa','band-an'];
+
+  function makeTd(text, cls) {
+    const td = document.createElement('td');
+    if (cls) td.className = cls;
+    td.textContent = text;
+    return td;
+  }
+
   roles.forEach(r => {
-    const start = r.startMonth||1, end = r.endMonth||12;
+    const start = parseInt(r.startMonth)||1, end = parseInt(r.endMonth)||12;
     const months = Math.max(0, end - start + 1);
     const hrs = 160 * (r.util/100) * r.count;
     const rRate = (r.lockedRate != null) ? r.lockedRate : rate;
     const rO    = (r.lockedRate != null) ? r.lockedRate : o;
     const rP    = (r.lockedRate != null) ? r.lockedRate : p;
     const moO = hrs * rO, moR = hrs * rRate, moP = hrs * rP;
-    const overrideTag = (r.lockedRate != null) ? ' <span style="font-size:9px;color:var(--accent2)">★ $'+esc(String(r.lockedRate))+'/hr</span>' : '';
-    const durTag = (start!==1||end!==12) ? `<span style="font-size:9px;color:var(--text3)"> mo ${esc(String(start))}–${esc(String(end))}</span>` : '';
+
     const tr = document.createElement('tr');
-    let cells = `<td>${esc(r.name)}${overrideTag}${durTag}<div class="role-meta">×${r.count} @ ${r.util}% · ${months} mo</div></td>`;
-    const bands = ['band-mo','band-q','band-sa','band-an'];
-    // cap each multiplier to role's actual months
+
+    // Role name cell — built safely with DOM methods
+    const nameTd = document.createElement('td');
+    const nameText = document.createTextNode(r.name || '');
+    nameTd.appendChild(nameText);
+    if (r.lockedRate != null) {
+      const badge = document.createElement('span');
+      badge.style.cssText = 'font-size:9px;color:var(--accent2)';
+      badge.textContent = ' ★ $' + parseFloat(r.lockedRate) + '/hr';
+      nameTd.appendChild(badge);
+    }
+    if (start !== 1 || end !== 12) {
+      const dur = document.createElement('span');
+      dur.style.cssText = 'font-size:9px;color:var(--text3)';
+      dur.textContent = ' mo ' + start + '–' + end;
+      nameTd.appendChild(dur);
+    }
+    const meta = document.createElement('div');
+    meta.className = 'role-meta';
+    meta.textContent = '×' + (parseInt(r.count)||1) + ' @ ' + (parseInt(r.util)||100) + '% · ' + months + ' mo';
+    nameTd.appendChild(meta);
+    tr.appendChild(nameTd);
+
     const cappedMults = [1, 3, 6, 12].map(m => Math.min(m, months));
     cappedMults.forEach((m, i) => {
       totalsO[i] += moO*m; totalsR[i] += moR*m; totalsP[i] += moP*m;
-      const b = bands[i];
-      cells += `<td class="opt-col ${b}">${fmt(moO*m)}</td><td class="pert-col ${b}">${fmt(moR*m)}</td><td class="pes-col ${b}">${fmt(moP*m)}</td>`;
+      tr.appendChild(makeTd(fmt(moO*m), 'opt-col ' + bands[i]));
+      tr.appendChild(makeTd(fmt(moR*m), 'pert-col ' + bands[i]));
+      tr.appendChild(makeTd(fmt(moP*m), 'pes-col ' + bands[i]));
     });
-    tr.innerHTML = cells;
     body.appendChild(tr);
   });
+
   const tr = document.createElement('tr');
-  let totalCells = `<td>Total</td>`;
-  const bands = ['band-mo','band-q','band-sa','band-an'];
+  tr.appendChild(makeTd('Total', ''));
   [0,1,2,3].forEach(i => {
-    const b = bands[i];
-    totalCells += `<td class="opt-col ${b}">${fmt(totalsO[i])}</td><td class="pert-col ${b}">${fmt(totalsR[i])}</td><td class="pes-col ${b}">${fmt(totalsP[i])}</td>`;
+    tr.appendChild(makeTd(fmt(totalsO[i]), 'opt-col ' + bands[i]));
+    tr.appendChild(makeTd(fmt(totalsR[i]), 'pert-col ' + bands[i]));
+    tr.appendChild(makeTd(fmt(totalsP[i]), 'pes-col ' + bands[i]));
   });
-  tr.innerHTML = totalCells;
   body.appendChild(tr);
 }
 
@@ -659,17 +783,44 @@ function setSaves(saves) {
 function renderSavedList() {
   const saves = getSaves();
   const el = document.getElementById('savedList');
-  if (!saves.length) { el.innerHTML = '<div class="no-saves">No saved estimates yet</div>'; return; }
-  el.innerHTML = saves.map((s,i) => {
+  el.textContent = '';
+  if (!saves.length) {
+    const empty = document.createElement('div');
+    empty.className = 'no-saves';
+    empty.textContent = 'No saved estimates yet';
+    el.appendChild(empty);
+    return;
+  }
+  saves.forEach((s, i) => {
     const isVer = / v\d+$/.test(s.name||'');
-    const verBadge = isVer ? `<span class="saved-item-ver">${esc((s.name||'').match(/ (v\d+)$/)[1])}</span>` : '';
     const dispName = isVer ? (s.name||'').replace(/ v\d+$/, '') : (s.name||'Untitled');
-    return `<div class="saved-item" onclick="loadSave(${i})">
-      <span class="saved-item-name" title="${esc(s.name)||''}">${esc(dispName)}</span>
-      ${verBadge}
-      <button class="saved-item-del" onclick="event.stopPropagation();deleteSave(${i})">×</button>
-    </div>`;
-  }).join('');
+    const verText = isVer ? ((s.name||'').match(/ (v\d+)$/) || [])[1] || '' : '';
+
+    const item = document.createElement('div');
+    item.className = 'saved-item';
+    item.addEventListener('click', () => loadSave(i));
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'saved-item-name';
+    nameSpan.title = s.name || '';
+    nameSpan.textContent = dispName;
+    item.appendChild(nameSpan);
+
+    if (isVer && verText) {
+      const verSpan = document.createElement('span');
+      verSpan.className = 'saved-item-ver';
+      verSpan.textContent = verText;
+      item.appendChild(verSpan);
+    }
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'saved-item-del';
+    delBtn.textContent = '×';
+    delBtn.addEventListener('click', e => { e.stopPropagation(); deleteSave(i); });
+    item.appendChild(delBtn);
+
+    el.appendChild(item);
+  });
 }
 
 function loadSave(i) {
