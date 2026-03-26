@@ -93,12 +93,12 @@ body { min-height: 100vh; }
 
 /* Roles table */
 .roles-wrap { background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-.roles-header { display: grid; grid-template-columns: 3fr 70px 110px 200px 100px 90px 160px 36px; gap: 0 16px; padding: 10px 20px; border-bottom: 1px solid var(--border); }
+.roles-header { display: grid; grid-template-columns: minmax(160px,4fr) 60px 100px 190px 90px 100px 120px 32px; gap: 0 16px; padding: 10px 20px; border-bottom: 1px solid var(--border); }
 .col-head { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; }
-.role-row { display: grid; grid-template-columns: 3fr 70px 110px 200px 100px 90px 160px 36px; align-items: end; padding: 12px 20px; border-bottom: 1px solid var(--border); transition: background 0.1s; gap: 0 16px; }
+.role-row { display: grid; grid-template-columns: minmax(160px,4fr) 60px 100px 190px 90px 100px 120px 32px; align-items: end; padding: 12px 20px; border-bottom: 1px solid var(--border); transition: background 0.1s; gap: 0 16px; }
 .role-row:last-child { border-bottom: none; }
 .role-row:hover { background: #f7f8fc; }
-.role-input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); font-family: var(--sans); width: 100%; }
+.role-input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); font-family: var(--sans); width: 100%; min-width: 0; }
 .role-input::placeholder { color: var(--text3); }
 .count-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; outline: none; font-family: var(--mono); font-size: 13px; color: var(--text); width: 52px; padding: 4px 8px; text-align: center; transition: border-color 0.15s; }
 .count-input:focus { border-color: var(--accent); }
@@ -431,9 +431,7 @@ const STORAGE_KEY = 'pert_saves_v1';
 const AUTO_KEY = 'pert_auto_v1';
 
 let roles = [
-  { name: 'Lead architect', count: 1, util: 100, lockedRate: null, startMonth: 1, endMonth: 12 },
-  { name: 'Developer', count: 2, util: 75, lockedRate: null, startMonth: 1, endMonth: 12 },
-  { name: 'Analyst', count: 1, util: 50, lockedRate: null, startMonth: 1, endMonth: 12 },
+  { name: 'Senior Developer', count: 1, util: 100, lockedRate: null, startMonth: 1, endMonth: 12 },
 ];
 
 function esc(s) {
@@ -488,7 +486,7 @@ function renderRoles() {
     const sRateCls    = sLocked != null ? 'is-locked' : '';
     const sLockedVal  = sLocked != null ? sLocked : '';
     div.innerHTML = `
-      <input class="role-input" type="text" value="${esc(r.name)}" placeholder="Role name" oninput="roles[${i}].name=this.value;calcHorizon()">
+      <input class="role-input" type="text" value="${esc(r.name)}" placeholder="Role or name" oninput="roles[${i}].name=this.value;calcHorizon()">
       <input class="count-input" type="number" value="${sCount}" min="1" max="99" oninput="roles[${i}].count=parseInt(this.value)||1;calc()">
       <div class="rate-cell-wrap">
         <span class="role-rate-meta ${sLockedCls}" id="rm_${i}" onclick="unlockRate(${i})">—</span>
@@ -938,9 +936,7 @@ function resetAll() {
   document.getElementById('rMl').value = 150;
   document.getElementById('rPes').value = 200;
   roles = [
-    { name: 'Lead architect', count: 1, util: 100, lockedRate: null, startMonth: 1, endMonth: 12 },
-    { name: 'Developer', count: 2, util: 75, lockedRate: null, startMonth: 1, endMonth: 12 },
-    { name: 'Analyst', count: 1, util: 50, lockedRate: null, startMonth: 1, endMonth: 12 },
+    { name: 'Senior Developer', count: 1, util: 100, lockedRate: null, startMonth: 1, endMonth: 12 },
   ];
   renderRoles();
   closeResetModal();
