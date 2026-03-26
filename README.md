@@ -48,7 +48,7 @@ After pushing changes to GitHub:
 1. Build and push the new image from your Mac:
 
 ```bash
-docker build -t ghcr.io/traxeon/pert-calculator:latest .
+docker build --no-cache -t ghcr.io/traxeon/pert-calculator:latest .
 docker push ghcr.io/traxeon/pert-calculator:latest
 ```
 
@@ -65,6 +65,8 @@ ghcr.io/traxeon/pert-calculator:latest
 ```
 
 The image is public — no registry credentials needed in Portainer.
+
+**Base image:** `nginx:1.29.7-alpine`
 
 ---
 
@@ -93,13 +95,17 @@ restore — useful when switching browsers or clearing storage.
 - Content Security Policy meta tag restricts script sources
 - `noopener,noreferrer` on all `window.open` calls
 - PDF export uses Blob URL instead of `document.write`
+- Base image pinned to `nginx:1.29.7-alpine` to avoid known CVEs in earlier versions
 
 ---
 
-## Code scanning
+## Code scanning & dependency management
 
 CodeQL analysis runs on every push and weekly via GitHub Actions.
 Results: https://github.com/traxeon/pert-calculator/security/code-scanning
+
+Dependabot monitors GitHub Actions and the Docker base image weekly, opening
+PRs automatically when updates are available.
 
 To suppress a known false positive at the line level:
 ```javascript
@@ -115,12 +121,13 @@ pert-calculator/
 ├── .github/
 │   ├── workflows/
 │   │   └── codeql.yml         # CodeQL scanning workflow
-│   └── codeql-config.yml      # CodeQL false positive suppressions
+│   ├── codeql-config.yml      # CodeQL false positive suppressions
+│   └── dependabot.yml         # Automated dependency updates
 ├── app/
 │   └── index.html             # Entire app — self-contained SPA
 ├── nginx/
 │   └── nginx.conf             # Nginx server block config
-├── Dockerfile
+├── Dockerfile                 # nginx:1.29.7-alpine base
 ├── docker-compose.yml
 └── README.md
 ```
