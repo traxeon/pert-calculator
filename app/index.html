@@ -214,7 +214,7 @@ textarea.form-input { resize: vertical; min-height: 70px; }
   .add-row { display: none; }
 }
 
-@media (prefers-color-scheme: dark), :root.dark {
+@media (prefers-color-scheme: dark) {
   :root {
     --bg: #1c1f16;
     --surface: #242720;
@@ -229,7 +229,26 @@ textarea.form-input { resize: vertical; min-height: 70px; }
     --accent2: #6ab08a;
     --danger: #d47070;
   }
-  html { -webkit-font-smoothing: antialiased; }
+}
+
+:root.dark {
+    --bg: #1c1f16;
+    --surface: #242720;
+    --surface2: #2c302a;
+    --surface3: #353930;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8e4d0;
+    --text2: #9a9480;
+    --text3: #5c5848;
+    --accent: #7eaad4;
+    --accent2: #6ab08a;
+    --danger: #d47070;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+html { -webkit-font-smoothing: antialiased; }
   .sidebar { box-shadow: 2px 0 12px rgba(0,0,0,0.3); }
   .rate-cell, .pert-cell, .metric { box-shadow: none; }
   .roles-wrap, .horizon-wrap { box-shadow: none; }
@@ -261,6 +280,41 @@ textarea.form-input { resize: vertical; min-height: 70px; }
   .count-input:focus, .rate-override:focus, .duration-input:focus { border-color: var(--accent); }
   .btn.primary { background: var(--accent); color: #1c1f16; }
 }
+
+:root.dark {
+html { -webkit-font-smoothing: antialiased; }
+  .sidebar { box-shadow: 2px 0 12px rgba(0,0,0,0.3); }
+  .rate-cell, .pert-cell, .metric { box-shadow: none; }
+  .roles-wrap, .horizon-wrap { box-shadow: none; }
+  .role-row:hover { background: rgba(255,255,255,0.03); }
+  .horizon-table tr:last-child td { background: rgba(126,170,212,0.08); }
+  .nav-item.active { background: rgba(126,170,212,0.1); }
+  .modal { background: var(--surface); }
+  .modal-warn-box { background: rgba(180,140,60,0.12); border-color: rgba(180,140,60,0.3); color: #c8a84a; }
+  .band-mo, .band-mo-h { background-color: rgba(200,168,60,0.10) !important; }
+  .band-q,  .band-q-h  { background-color: rgba(106,176,138,0.10) !important; }
+  .band-sa, .band-sa-h { background-color: rgba(126,170,212,0.10) !important; }
+  .band-an, .band-an-h { background-color: rgba(200,110,110,0.10) !important; }
+  .horizon-table tr:last-child td.band-mo { background-color: rgba(200,168,60,0.18) !important; }
+  .horizon-table tr:last-child td.band-q  { background-color: rgba(106,176,138,0.18) !important; }
+  .horizon-table tr:last-child td.band-sa { background-color: rgba(126,170,212,0.18) !important; }
+  .horizon-table tr:last-child td.band-an { background-color: rgba(200,110,110,0.18) !important; }
+  .opt-col { color: #6ab08a; }
+  .pes-col { color: #d47070; }
+  .pert-col { color: #7eaad4; }
+  .horizon-table tr:last-child .opt-col { color: #6ab08a; }
+  .horizon-table tr:last-child .pes-col { color: #d47070; }
+  .horizon-table tr:last-child .pert-col { color: #7eaad4; }
+  .add-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(126,170,212,0.06); }
+  .role-rate.is-locked { background: rgba(106,176,138,0.10); }
+  .toast { background: #353930; }
+  .toast.success { background: #3a6b50; }
+  .share-btn:hover { border-color: var(--accent); color: var(--accent); }
+  input[type=range] { background: var(--surface3); }
+  .count-input:focus, .rate-override:focus, .duration-input:focus { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #1c1f16; }
+}
+
 </style>
 </head>
 <body>
@@ -1097,55 +1151,7 @@ function exportQuotePDF() {
     .fn-item strong { color: #1a1a1a; }
     .footer { margin-top: 16px; font-size: 9.5px; color: #aaa; border-top: 1px solid #e8e8e8; padding-top: 10px; }
     @media print { body { padding: 20px; } }
-  
-@media (prefers-color-scheme: dark), :root.dark {
-  :root {
-    --bg: #1c1f16;
-    --surface: #242720;
-    --surface2: #2c302a;
-    --surface3: #353930;
-    --border: rgba(255,255,255,0.07);
-    --border2: rgba(255,255,255,0.13);
-    --text: #e8e4d0;
-    --text2: #9a9480;
-    --text3: #5c5848;
-    --accent: #7eaad4;
-    --accent2: #6ab08a;
-    --danger: #d47070;
-  }
-  html { -webkit-font-smoothing: antialiased; }
-  .sidebar { box-shadow: 2px 0 12px rgba(0,0,0,0.3); }
-  .rate-cell, .pert-cell, .metric { box-shadow: none; }
-  .roles-wrap, .horizon-wrap { box-shadow: none; }
-  .role-row:hover { background: rgba(255,255,255,0.03); }
-  .horizon-table tr:last-child td { background: rgba(126,170,212,0.08); }
-  .nav-item.active { background: rgba(126,170,212,0.1); }
-  .modal { background: var(--surface); }
-  .modal-warn-box { background: rgba(180,140,60,0.12); border-color: rgba(180,140,60,0.3); color: #c8a84a; }
-  .band-mo, .band-mo-h { background-color: rgba(200,168,60,0.10) !important; }
-  .band-q,  .band-q-h  { background-color: rgba(106,176,138,0.10) !important; }
-  .band-sa, .band-sa-h { background-color: rgba(126,170,212,0.10) !important; }
-  .band-an, .band-an-h { background-color: rgba(200,110,110,0.10) !important; }
-  .horizon-table tr:last-child td.band-mo { background-color: rgba(200,168,60,0.18) !important; }
-  .horizon-table tr:last-child td.band-q  { background-color: rgba(106,176,138,0.18) !important; }
-  .horizon-table tr:last-child td.band-sa { background-color: rgba(126,170,212,0.18) !important; }
-  .horizon-table tr:last-child td.band-an { background-color: rgba(200,110,110,0.18) !important; }
-  .opt-col { color: #6ab08a; }
-  .pes-col { color: #d47070; }
-  .pert-col { color: #7eaad4; }
-  .horizon-table tr:last-child .opt-col { color: #6ab08a; }
-  .horizon-table tr:last-child .pes-col { color: #d47070; }
-  .horizon-table tr:last-child .pert-col { color: #7eaad4; }
-  .add-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(126,170,212,0.06); }
-  .role-rate.is-locked { background: rgba(106,176,138,0.10); }
-  .toast { background: #353930; }
-  .toast.success { background: #3a6b50; }
-  .share-btn:hover { border-color: var(--accent); color: var(--accent); }
-  input[type=range] { background: var(--surface3); }
-  .count-input:focus, .rate-override:focus, .duration-input:focus { border-color: var(--accent); }
-  .btn.primary { background: var(--accent); color: #1c1f16; }
-}
-</style></head><body>
+  </style></head><body>
   <h1>${esc(d.name)}</h1>
   <div class="meta">Date: ${esc(d.date)} &nbsp;·&nbsp; PERT Cost Estimate</div>
   ${d.notes ? `<div class="notes"><strong>Scope / Notes:</strong><br>${esc(d.notes).replace(/\n/g,'<br>')}</div>` : ''}
