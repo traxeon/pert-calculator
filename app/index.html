@@ -98,6 +98,7 @@ body { min-height: 100vh; }
 .role-row { display: grid; grid-template-columns: minmax(160px,4fr) 60px 100px 180px 90px 110px 160px 32px; align-items: end; padding: 12px 20px; border-bottom: 1px solid var(--border); transition: background 0.1s; gap: 0 14px; }
 .role-row:last-child { border-bottom: none; }
 .role-row:hover { background: #f7f8fc; }
+html:not(.dark) .role-row:hover { background: #f7f8fc !important; }
 .role-input { background: none; border: none; outline: none; font-size: 13px; color: var(--text); font-family: var(--sans); width: 100%; min-width: 0; }
 .role-input::placeholder { color: var(--text3); }
 .count-input { background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; outline: none; font-family: var(--mono); font-size: 13px; color: var(--text); width: 52px; padding: 4px 8px; text-align: center; transition: border-color 0.15s; }
@@ -254,7 +255,7 @@ textarea.form-input { resize: vertical; min-height: 70px; }
 
 /* Fix the few hardcoded colors that don't use CSS vars */
 @media (prefers-color-scheme: dark) {
-  .role-row:hover { background: #002b36 !important; }
+  .role-row:hover { background: #002b36; }
   .horizon-table tr:last-child td { background: rgba(38,139,210,0.08) !important; }
   .modal-warn-box { background: rgba(181,137,0,0.15) !important; border-color: rgba(181,137,0,0.25) !important; color: #b58900 !important; }
   .opt-col { color: #859900 !important; }
