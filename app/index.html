@@ -543,6 +543,12 @@ function sanitizeState(state) {
 }
 
 function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtAbbr(n) {
+  n = Math.round(n);
+  if (n >= 1000000) return '$' + (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M';
+  if (n >= 1000)    return '$' + (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K';
+  return '$' + n.toLocaleString();
+}
 function fmtHrs(n) { return Math.round(n).toLocaleString(); }
 
 function getPertRate() {
@@ -808,9 +814,9 @@ function calcHorizon(rate, o, p) {
     const cappedMults = [1, 3, 6, 12].map(m => Math.min(m, months));
     cappedMults.forEach((m, i) => {
       totalsO[i] += moO*m; totalsR[i] += moR*m; totalsP[i] += moP*m;
-      tr.appendChild(makeTd(fmt(moO*m), 'opt-col ' + bands[i]));
-      tr.appendChild(makeTd(fmt(moR*m), 'pert-col ' + bands[i]));
-      tr.appendChild(makeTd(fmt(moP*m), 'pes-col ' + bands[i]));
+      tr.appendChild(makeTd(fmtAbbr(moO*m), 'opt-col ' + bands[i]));
+      tr.appendChild(makeTd(fmtAbbr(moR*m), 'pert-col ' + bands[i]));
+      tr.appendChild(makeTd(fmtAbbr(moP*m), 'pes-col ' + bands[i]));
     });
     body.appendChild(tr);
   });
@@ -818,9 +824,9 @@ function calcHorizon(rate, o, p) {
   const tr = document.createElement('tr');
   tr.appendChild(makeTd('Total', ''));
   [0,1,2,3].forEach(i => {
-    tr.appendChild(makeTd(fmt(totalsO[i]), 'opt-col ' + bands[i]));
-    tr.appendChild(makeTd(fmt(totalsR[i]), 'pert-col ' + bands[i]));
-    tr.appendChild(makeTd(fmt(totalsP[i]), 'pes-col ' + bands[i]));
+    tr.appendChild(makeTd(fmtAbbr(totalsO[i]), 'opt-col ' + bands[i]));
+    tr.appendChild(makeTd(fmtAbbr(totalsR[i]), 'pert-col ' + bands[i]));
+    tr.appendChild(makeTd(fmtAbbr(totalsP[i]), 'pes-col ' + bands[i]));
   });
   body.appendChild(tr);
 }
